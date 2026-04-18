@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { generateScrapbookPages, extractStorySignals, formatSignalsLine } from "../lib/scrapbookGenerator";
+import { generateSceneImageDataUrl } from "../lib/sceneImageGenerator";
 
 const FONTS = `@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&family=DM+Sans:wght@300;400;500&display=swap');`;
 
@@ -295,6 +297,9 @@ body.geo-map-on .center-title{display:none!important}
 .ainput::placeholder,.atextarea::placeholder{color:var(--muted)}
 .ainput:focus,.atextarea:focus,.aselect:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(200,98,62,.1)}
 .atextarea{resize:vertical;min-height:110px;line-height:1.7}
+.astory-meta{font-size:11px;margin-top:6px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.astory-count{font-variant-numeric:tabular-nums}
+.astory-count.warn{color:var(--accent)}
 .avideo-hint{font-size:11px;color:var(--muted);line-height:1.5;margin-top:4px}
 .avideo-preview{width:100%;max-height:160px;border-radius:8px;margin-top:8px;background:var(--ink)}
 .avideo-file{font-size:12px;color:var(--ink2)}
@@ -869,184 +874,7 @@ function Tooltip({ entry, pos }) {
   );
 }
 
-// ── Scrapbook AI (story → analysis + 5 pages → SVG per page) ─────────────────
-async function callClaude(prompt, maxTokens = 2000) {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "anthropic-dangerous-direct-browser-access": "true",
-    },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: maxTokens,
-      messages: [{ role: "user", content: prompt }]
-    })
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(`API ${res.status}: ${err?.error?.message || "unknown"}`);
-  }
-  const d = await res.json();
-  const text = (d.content || []).map(b => b.text || "").join("");
-  return text.replace(/^```(?:json)?\s*/m, "").replace(/\s*```\s*$/m, "").trim();
-}
-
-function parseJsonRobust(raw) {
-  const stripped = raw.replace(/^```(?:json)?\s*/m, "").replace(/\s*```\s*$/m, "").trim();
-  try {
-    return JSON.parse(stripped);
-  } catch {
-    const i = stripped.indexOf("{");
-    const j = stripped.lastIndexOf("}");
-    if (i >= 0 && j > i) return JSON.parse(stripped.slice(i, j + 1));
-    throw new Error("Could not parse model JSON");
-  }
-}
-
-/** Heuristic 5-page plan from story text when the API is unavailable — still story-specific, no fake SVG. */
-function buildFallbackScrapbookPlan(entry) {
-  const story = (entry.story || "").trim();
-  const paras = story.split(/\n\n+/).map(p => p.trim()).filter(Boolean);
-  let chunks = [];
-  if (paras.length >= 5) {
-    const pick = [0, 1, 2, 3, 4];
-    if (paras.length > 5) {
-      const step = (paras.length - 1) / 4;
-      pick[1] = Math.round(step);
-      pick[2] = Math.round(step * 2);
-      pick[3] = Math.round(step * 3);
-      pick[4] = paras.length - 1;
-    }
-    chunks = pick.map(i => paras[Math.min(i, paras.length - 1)]);
-  } else {
-    const sentences = story.split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(s => s.length > 12);
-    for (let i = 0; i < 5; i++) {
-      const idx = sentences.length >= 5
-        ? Math.floor((i / 4) * (sentences.length - 1))
-        : Math.min(i, Math.max(0, sentences.length - 1));
-      chunks.push(sentences[idx] || story.slice(i * 120, (i + 1) * 120) || story);
-    }
-  }
-  const titleFrom = (t, i) => {
-    const line = t.replace(/\s+/g, " ").trim();
-    const short = line.slice(0, 52);
-    return line.length > 52 ? `${short}…` : short || `Moment ${i + 1}`;
-  };
-  const pages = chunks.map((chunk, i) => ({
-    sceneTitle: titleFrom(chunk, i),
-    caption: chunk.length > 140 ? `${chunk.slice(0, 137)}…` : chunk,
-    imagePrompt: `Wholesome, nostalgic, hand-painted Studio Ghibli–inspired storybook scene, soft natural light, warm palette, expressive faces: ${chunk}`,
-    visualDetails: `Composition grounded in this passage: ${chunk}`,
-    emotion: "nostalgia",
-  }));
-  return {
-    analysis: {
-      people: entry.person ? [entry.person] : [],
-      relationships: "",
-      setting: entry.place || "",
-      timePeriod: "",
-      keyObjects: [],
-      emotions: [],
-      keyEvents: [],
-    },
-    pages,
-    fallback: true,
-  };
-}
-
-async function buildScrapbookPlan(entry) {
-  const prompt = `You are designing a deeply personalized 5-page memory scrapbook for ONE archive entry. The scrapbook must be grounded ONLY in the story text below — not generic cultural filler.
-
-ARCHIVE METADATA:
-- Title: ${entry.title}
-- Storyteller: ${entry.person}
-- Culture: ${entry.culture}
-- Place: ${entry.place}
-- Type: ${entry.type}
-
-FULL STORY (sole source of truth — read every sentence):
-"""
-${entry.story}
-"""
-
-STEP 1 — Extract from THIS story only:
-- people: string[] (names or roles: e.g. "grandmother", "narrator as a child")
-- relationships: short string (who to whom)
-- setting: where scenes unfold (be specific if the text is)
-- timePeriod: era, year, or life stage if mentioned
-- keyObjects: string[] (concrete things: recipe card, lantern, train, temple, dumplings, phone recorder, cedar trunk, river, etc.)
-- emotions: string[] (emotions named or clearly implied)
-- keyEvents: string[] (short phrases for what happens, in narrative order where possible)
-
-STEP 2 — Create exactly 5 scrapbook pages. Each page = one real moment from the story (chronological through the narrative OR an emotionally meaningful order that still maps to real events in the text). Do not invent major events not supported by the story.
-
-For EACH page output:
-- sceneTitle: specific to this story (not generic like "family together")
-- caption: one warm sentence, max ~24 words, names/objects from the story when possible
-- imagePrompt: 5–8 sentences. Highly specific: WHO (roles/names), clothing/age if inferable, WHERE, WHAT is happening, KEY OBJECTS, lighting, weather, emotional atmosphere. Style: wholesome, nostalgic, hand-painted, Studio Ghibli–inspired, soft diffused natural light, warm earth and botanical palette, expressive faces, cinematic storybook composition — but the SUBJECT must be literal from the story above.
-- visualDetails: 2–4 sentences on layout: foreground / midground / background, key props, palette, focal emotion
-- emotion: one of: warmth, joy, grief, wonder, longing, pride, tenderness, resilience, love, nostalgia, hope, bittersweet
-
-If the story mentions something concrete (grandmother cooking, migration train, child at festival, courtyard, recipe card, village, temple, lullaby, recording on a phone), those details MUST appear on the pages where they belong.
-
-Return ONLY valid JSON (no markdown):
-{"analysis":{"people":[],"relationships":"","setting":"","timePeriod":"","keyObjects":[],"emotions":[],"keyEvents":[]},"pages":[{"sceneTitle":"","caption":"","imagePrompt":"","visualDetails":"","emotion":""}]}`;
-
-  const raw = await callClaude(prompt, 6000);
-  const parsed = parseJsonRobust(raw);
-  if (!parsed.pages || !Array.isArray(parsed.pages) || parsed.pages.length < 1) {
-    throw new Error("Invalid scrapbook plan");
-  }
-  const pages = parsed.pages.slice(0, 5);
-  while (pages.length < 5) {
-    pages.push({
-      sceneTitle: `Reflection ${pages.length + 1}`,
-      caption: entry.quote || entry.title,
-      imagePrompt: `Warm nostalgic Ghibli-inspired scene echoing: ${entry.title}`,
-      visualDetails: "Soft light, intimate framing, emotional closure.",
-      emotion: "nostalgia",
-    });
-  }
-  return { analysis: parsed.analysis || {}, pages: pages.slice(0, 5), fallback: false };
-}
-
-async function generateSceneSVG(scene, entry, analysis) {
-  const analysisStr = typeof analysis === "object" && analysis
-    ? JSON.stringify(analysis, null, 0).slice(0, 1800)
-    : String(analysis || "");
-  const raw = await callClaude(`You are an illustrator who outputs ONE self-contained SVG. The scene must depict the SPECIFIC moment below — not a generic village or anonymous figures. Use details from the image prompt.
-
-ARCHIVE: ${entry.person} · ${entry.culture} · ${entry.place}
-TITLE: ${entry.title}
-
-STORY ANALYSIS (for consistency): ${analysisStr}
-
-PAGE:
-- sceneTitle: ${scene.sceneTitle}
-- caption: ${scene.caption}
-- emotion: ${scene.emotion || "nostalgia"}
-- visualDetails: ${scene.visualDetails || ""}
-- IMAGE PROMPT (primary — illustrate this exactly): ${scene.imagePrompt || scene.visualDescription || ""}
-
-VISUAL STYLE (apply on top of literal subject matter):
-- Wholesome, nostalgic, hand-painted, Studio Ghibli–inspired
-- Soft natural / golden-hour light, warm greens, terracotta, cream, sky blues
-- Expressive simple character silhouettes; round soft shapes
-- Storybook / memory-like composition, gentle depth
-
-SVG RULES:
-- viewBox="0 0 400 280" xmlns="http://www.w3.org/2000/svg"
-- Use <defs> with at least one soft radialGradient for atmosphere
-- Three layers: background (setting), midground (figures/action), foreground (key objects)
-- At least 28 distinct elements using path, ellipse, rect, circle, polygon, line as needed
-- Show concrete props from the prompt (food, lantern, train, water, buildings, instruments, etc.) when mentioned
-- NO text, letters, or captions inside the SVG
-
-Return ONLY the raw <svg>...</svg> element. No markdown or explanation.`, 4500);
-  const svgMatch = raw.match(/<svg[\s\S]*?<\/svg>/i);
-  return svgMatch ? svgMatch[0] : raw.includes("<svg") ? raw : null;
-}
+// ── Local scrapbook (TypeScript: ../lib/scrapbookGenerator + sceneImageGenerator) ──
 
 const SB_GEN_STEPS = [
   "Reading this archive entry…",
@@ -1062,79 +890,74 @@ const SB_GEN_STEPS = [
 const EMOTION_COLORS = {
   warmth:"#d4845a", joy:"#c9a030", wonder:"#4a9e8a", longing:"#5a82c4",
   grief:"#8a8aaa", pride:"#5aaa78", tenderness:"#c46898", resilience:"#8a6a3a",
-  gratitude:"#6a9a6a", love:"#c46898", nostalgia:"#a07850", hope:"#5aaa78", bittersweet:"#a07868"
+  gratitude:"#6a9a6a", love:"#c46898", nostalgia:"#a07850", hope:"#5aaa78", bittersweet:"#a07868",
+  fear:"#8a7a90", loss:"#9a9490"
 };
 
-// ── Scrapbook Component ───────────────────────────────────────────────────────
+function scrapbookEntryFromBubble(entry) {
+  return {
+    title: entry.title,
+    story: entry.story,
+    person: entry.person,
+    place: entry.place,
+    culture: entry.culture,
+  };
+}
+
+/** Hardcoded art for the 8 seed bubbles (ids 1–8). User-submitted entries use canvas fallback. */
+function getSeedStoryScrapbookImageUrl(entryId) {
+  if (entryId >= 1 && entryId <= 8) return `/stories/story-${entryId}.svg`;
+  return null;
+}
+
+function formatScrapbookVisualBlock(vd) {
+  if (!vd || typeof vd !== "object") return null;
+  const lines = [
+    vd.characters?.length ? `Who: ${vd.characters.join(", ")}` : null,
+    vd.setting ? `Where: ${vd.setting}` : null,
+    vd.importantObjects?.length ? `Objects: ${vd.importantObjects.join(", ")}` : null,
+    vd.lighting ? `Light: ${vd.lighting}` : null,
+    vd.colorPalette ? `Palette: ${vd.colorPalette}` : null,
+  ].filter(Boolean);
+  return lines.length ? lines.join(" · ") : null;
+}
+
+// ── Scrapbook Component (100% local — ../lib/scrapbookGenerator.ts) ───────────
 function Scrapbook({ entry, onClose }) {
   const [pages, setPages] = useState([]);
-  const [analysis, setAnalysis] = useState(null);
-  const [usedFallbackPlan, setUsedFallbackPlan] = useState(false);
+  const [signalsLine, setSignalsLine] = useState("");
   const [current, setCurrent] = useState(0);
   const [genStep, setGenStep] = useState(0);
   const [done, setDone] = useState(false);
-  const [planDone, setPlanDone] = useState(false);
   const [autoPlay, setAutoPlay] = useState(false);
-  const [genError, setGenError] = useState(null);
   const autoRef = useRef(null);
   const pal = PALETTES[entry.p % PALETTES.length];
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
+    setPages([]);
+    setDone(false);
+    setGenStep(0);
+    const id = requestAnimationFrame(() => {
       try {
-        setGenError(null);
-        setGenStep(1);
-        let plan;
-        try {
-          plan = await buildScrapbookPlan(entry);
-        } catch (planErr) {
-          console.warn("Scrapbook plan API:", planErr);
-          plan = buildFallbackScrapbookPlan(entry);
-          if (!cancelled) setUsedFallbackPlan(true);
-        }
-        if (cancelled) return;
-        setAnalysis(plan.analysis || {});
-        setPlanDone(true);
-        setGenStep(3);
-        const scenePages = plan.pages || [];
-        for (let i = 0; i < scenePages.length; i++) {
-          if (cancelled) return;
-          setGenStep(4 + i);
-          const scene = scenePages[i];
-          let svg = null;
-          try {
-            svg = await generateSceneSVG(scene, entry, plan.analysis || {});
-          } catch (svgErr) {
-            console.warn("Scrapbook SVG:", svgErr);
-          }
-          if (cancelled) return;
-          const row = {
-            ...scene,
-            svg,
-            noSvg: !svg,
-          };
-          setPages(p => [...p, row]);
-          if (i === 0) setCurrent(0);
-        }
+        const arc = scrapbookEntryFromBubble(entry);
+        setSignalsLine(formatSignalsLine(extractStorySignals(arc)));
+        const plan = generateScrapbookPages(arc);
+        setGenStep(8);
+        const seedArt = getSeedStoryScrapbookImageUrl(entry.id);
+        const built = plan.map((p) => ({
+          ...p,
+          imageUrl: seedArt || generateSceneImageDataUrl(p, arc),
+        }));
+        setPages(built);
         setDone(true);
-        if (!cancelled) setTimeout(() => setAutoPlay(true), 600);
+        setCurrent(0);
+        setTimeout(() => setAutoPlay(true), 500);
       } catch (e) {
         console.error("Scrapbook:", e);
-        setGenError("Couldn't build this scrapbook. Using story text on each page.");
-        try {
-          const plan = buildFallbackScrapbookPlan(entry);
-          setAnalysis(plan.analysis || {});
-          setUsedFallbackPlan(true);
-          setPlanDone(true);
-          setGenStep(8);
-          setPages((plan.pages || []).map(scene => ({ ...scene, svg: null, noSvg: true })));
-          setCurrent(0);
-        } catch (_) { /* noop */ }
         setDone(true);
       }
-    })();
-    return () => { cancelled = true; };
+    });
+    return () => cancelAnimationFrame(id);
   }, [entry.id]);
 
   useEffect(() => {
@@ -1151,18 +974,9 @@ function Scrapbook({ entry, onClose }) {
 
   const goTo = i => { setCurrent(i); setAutoPlay(false); };
   const page = pages[current];
-  const emoKey = page?.emotion ? String(page.emotion).toLowerCase() : "";
+  const emoKey = page?.visualDetails?.emotion ? String(page.visualDetails.emotion).toLowerCase() : "";
   const emoColor = page ? (EMOTION_COLORS[emoKey] || pal.bg) : pal.bg;
-  const progressPct = !planDone ? (genStep / 8) * 35 : done ? 100 : 35 + (pages.length / 5) * 65;
-
-  const analysisLine = analysis && typeof analysis === "object"
-    ? [
-        Array.isArray(analysis.people) && analysis.people.length ? `People: ${analysis.people.join(", ")}` : null,
-        analysis.setting ? `Setting: ${analysis.setting}` : null,
-        analysis.timePeriod ? `Time: ${analysis.timePeriod}` : null,
-        Array.isArray(analysis.keyObjects) && analysis.keyObjects.length ? `Objects: ${analysis.keyObjects.join(", ")}` : null,
-      ].filter(Boolean).join(" · ")
-    : "";
+  const progressPct = done ? 100 : pages.length ? 85 : 40;
 
   return (
     <div className="sb-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -1176,14 +990,14 @@ function Scrapbook({ entry, onClose }) {
           <button type="button" className="sb-close" onClick={onClose}>✕</button>
         </div>
 
-        {analysisLine && (
-          <div className="sb-analysis">{analysisLine}</div>
+        {signalsLine && (
+          <div className="sb-analysis">{signalsLine}</div>
         )}
-        {usedFallbackPlan && planDone && (
-          <div className="sb-analysis" style={{background:"rgba(200,98,62,.06)",borderBottom:"1px solid var(--border)"}}>
-            Offline mode: moments are split from this story&apos;s text. Connect the Anthropic API for full AI illustration.
-          </div>
-        )}
+        <div className="sb-analysis" style={{background:"rgba(90,130,196,.06)",borderBottom:"1px solid var(--border)"}}>
+          {getSeedStoryScrapbookImageUrl(entry.id)
+            ? "Art is fixed for this archive story; captions are parsed from your text on-device."
+            : "Generated on your device from this story&apos;s text — no AI API calls."}
+        </div>
 
         <div style={{height:2,background:"var(--border)",position:"relative"}}>
           <div style={{position:"absolute",left:0,top:0,height:"100%",background:pal.bg,
@@ -1194,11 +1008,12 @@ function Scrapbook({ entry, onClose }) {
           <div className="sb-generating">
             <div className="sb-gen-ring" style={{borderTopColor:pal.bg}}/>
             <div className="sb-gen-title" style={{fontStyle:"italic"}}>
-              {!planDone ? `Reading ${entry.person.split(" ")[0]}'s story…` : `Painting scene ${Math.min(genStep - 3, 5)} of 5…`}
+              Weaving {entry.person.split(" ")[0]}&apos;s story into five scenes…
             </div>
             <div className="sb-gen-sub">
-              {!planDone && "Extracting people, relationships, setting, objects, and emotions from this entry only…"}
-              {planDone && genStep >= 4 && "Illustrating each moment with story-specific details (Ghibli-inspired hand-painted look)…"}
+              {getSeedStoryScrapbookImageUrl(entry.id)
+                ? "Loading story art and parsing five moments from the text…"
+                : "Parsing sentences, scoring moments, and painting canvas frames locally."}
             </div>
             <div className="sb-gen-steps">
               {SB_GEN_STEPS.map((s, i) => (
@@ -1208,7 +1023,6 @@ function Scrapbook({ entry, onClose }) {
                 </div>
               ))}
             </div>
-            {genError && <div style={{color:"var(--accent)",fontSize:12,marginTop:12,textAlign:"center",maxWidth:300}}>{genError}</div>}
           </div>
         ) : (
           <>
@@ -1217,65 +1031,52 @@ function Scrapbook({ entry, onClose }) {
                 {pages.map((pg, i) => (
                   <div key={i} className="sb-page">
                     <div className="sb-scene-art" style={{background:`linear-gradient(160deg,${pal.bg}12,#f5ede008)`}}>
-                      {pg.svg ? (
-                        <div style={{width:"100%",height:"100%"}} dangerouslySetInnerHTML={{__html: pg.svg}}/>
+                      {pg.imageUrl ? (
+                        <img
+                          alt=""
+                          src={pg.imageUrl}
+                          style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}
+                        />
                       ) : (
                         <div className="sb-scene-fallback">
                           <div className="sb-fallback-frame">
-                            <div className="sb-fallback-label">Memory scene (text)</div>
-                            <p className="sb-fallback-details">{pg.visualDetails || pg.imagePrompt || pg.caption}</p>
+                            <div className="sb-fallback-label">Scene</div>
+                            <p className="sb-fallback-details">{formatScrapbookVisualBlock(pg.visualDetails) || pg.caption}</p>
                           </div>
                         </div>
                       )}
                     </div>
                     <div className="sb-page-caption">
-                      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+                      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6,flexWrap:"wrap",gap:6}}>
                         <span className="sb-page-num">Page {i+1} of {pages.length}</span>
-                        {pg.emotion && (
+                        <span style={{fontSize:9,letterSpacing:".12em",textTransform:"uppercase",color:pal.bg}}>{pg.sceneType}</span>
+                        {pg.visualDetails?.emotion && (
                           <span style={{
                             fontSize:9,letterSpacing:".1em",textTransform:"uppercase",
-                            color:EMOTION_COLORS[String(pg.emotion).toLowerCase()]||pal.bg,
-                            background:(EMOTION_COLORS[String(pg.emotion).toLowerCase()]||pal.bg)+"1a",
-                            border:`1px solid ${(EMOTION_COLORS[String(pg.emotion).toLowerCase()]||pal.bg)}35`,
+                            color:EMOTION_COLORS[String(pg.visualDetails.emotion).toLowerCase()]||pal.bg,
+                            background:(EMOTION_COLORS[String(pg.visualDetails.emotion).toLowerCase()]||pal.bg)+"1a",
+                            border:`1px solid ${(EMOTION_COLORS[String(pg.visualDetails.emotion).toLowerCase()]||pal.bg)}35`,
                             padding:"2px 8px",borderRadius:100
-                          }}>{pg.emotion}</span>
+                          }}>{pg.visualDetails.emotion}</span>
                         )}
                       </div>
                       <div className="sb-page-moment">{pg.sceneTitle}</div>
                       <div className="sb-page-detail">{pg.caption}</div>
-                      {pg.visualDetails && (
-                        <div className="sb-page-visual">{pg.visualDetails}</div>
-                      )}
-                      {pg.imagePrompt && (
-                        <details className="sb-page-prompt">
-                          <summary>Scene direction (for illustration)</summary>
-                          <div className="sb-prompt-body">{pg.imagePrompt}</div>
-                        </details>
+                      {formatScrapbookVisualBlock(pg.visualDetails) && (
+                        <div className="sb-page-visual">{formatScrapbookVisualBlock(pg.visualDetails)}</div>
                       )}
                     </div>
                   </div>
                 ))}
-                {!done && (
-                  <div className="sb-page" style={{minWidth:"100%"}}>
-                    <div className="sb-scene-art" style={{background:"var(--surface2)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:12}}>
-                      <div className="sb-gen-ring" style={{borderTopColor:pal.bg}}/>
-                      <div style={{fontSize:12,color:"var(--muted)",fontStyle:"italic"}}>Painting scene {pages.length+1} of 5…</div>
-                    </div>
-                    <div className="sb-page-caption">
-                      <div className="sb-page-num">Generating…</div>
-                      <div className="sb-page-moment" style={{color:"var(--muted)"}}>Scene {pages.length+1}</div>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
             <div className="sb-controls">
               <button type="button" className="sb-nav-btn" onClick={()=>goTo(Math.max(0,current-1))} disabled={current===0}>←</button>
               <div className="sb-dots">
-                {Array.from({length:Math.max(pages.length + (done?0:1), 1)}).map((_,i)=>(
+                {pages.map((_,i)=>(
                   <div key={i} className={`sb-dot ${i===current?"on":""}`}
-                    onClick={()=>i<pages.length&&goTo(i)}
-                    style={i===current?{background:emoColor}:{opacity:i<pages.length?1:.25}}/>
+                    onClick={()=>goTo(i)}
+                    style={i===current?{background:emoColor}:{opacity:1}}/>
                 ))}
               </div>
               <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -1287,7 +1088,7 @@ function Scrapbook({ entry, onClose }) {
                 )}
                 <button type="button" className="sb-nav-btn"
                   onClick={()=>goTo(Math.min(pages.length-1,current+1))}
-                  disabled={current>=pages.length-1&&done}>→</button>
+                  disabled={current>=pages.length-1}>→</button>
               </div>
             </div>
           </>
@@ -1370,6 +1171,8 @@ function StoryModal({ entry, entries, likes, onLike, onClose, onShareInChat, onO
   );
 }
 
+const MIN_STORY_CHARS = 30;
+
 // ── Add Modal ─────────────────────────────────────────────────────────────────
 function AddModal({ onClose, onSubmit }) {
   const [f,setF]=useState({name:"",culture:"",place:"",type:"Family Memory",story:""});
@@ -1418,7 +1221,8 @@ function AddModal({ onClose, onSubmit }) {
     });
   };
 
-  const ok=f.name.trim()&&f.story.trim().length>40;
+  const storyLen = f.story.trim().length;
+  const ok = Boolean(f.name.trim()) && storyLen >= MIN_STORY_CHARS;
   const handlePreserve = () => {
     onSubmit({ ...f, videoUrl: videoPreviewUrl || undefined });
     setVideoPreviewUrl(null);
@@ -1440,7 +1244,12 @@ function AddModal({ onClose, onSubmit }) {
             <div className="afield"><label className="alabel">Culture / Heritage</label><input className="ainput" value={f.culture} onChange={e=>s("culture",e.target.value)} placeholder="e.g. Sichuan Chinese"/></div>
             <div className="afield"><label className="alabel">Place</label><input className="ainput" value={f.place} onChange={e=>s("place",e.target.value)} placeholder="e.g. Lahore → London"/></div>
           </div>
-          <div className="afield"><label className="alabel">The Story *</label><textarea className="atextarea" value={f.story} onChange={e=>s("story",e.target.value)} placeholder="Write it exactly as you remember it. Raw is beautiful. There is no wrong way to tell a true story..."/></div>
+          <div className="afield"><label className="alabel">The Story *</label><textarea className="atextarea" value={f.story} onChange={e=>s("story",e.target.value)} placeholder="Write it exactly as you remember it. Raw is beautiful. There is no wrong way to tell a true story..."/>
+            <div className="astory-meta">
+              <span className="alabel" style={{margin:0}}>Name + story required</span>
+              <span className={`astory-count ${storyLen < MIN_STORY_CHARS ? "warn" : ""}`}>{storyLen} / {MIN_STORY_CHARS} characters</span>
+            </div>
+          </div>
           <div className="afield">
             <label className="alabel">Preserve a video (optional)</label>
             <input type="file" accept="video/*" className="ainput avideo-file" onChange={onVideoPick}/>
@@ -1541,12 +1350,79 @@ function ChatPanel({ open, onClose, msgs, onSend, unlocked, onUnlock, onOpenStor
   );
 }
 
-// ── AI ────────────────────────────────────────────────────────────────────────
+// ── AI (optional) + local fallback when no API key / network error ────────────
+const STOP_LABEL = new Set(["the","a","an","i","we","it","my","our","your","this","that","these","those","and","or","but","in","on","at","to","for","of","is","was","were","are","be","been","have","has","had","not","no","so","if","when","than","then","into","as","by","with","from","there","here","they","he","she","me","us","them","what","which","who"]);
+
+function inferThemesFromText(text) {
+  const t = text.toLowerCase();
+  const out = [];
+  const add = x => { if (!out.includes(x)) out.push(x); };
+  if (/food|cook|eat|recipe|kitchen|meal|bread|soup|dumpling|rice|oil|ginger|flour/.test(t)) add("food");
+  if (/leave|left|border|journey|train|walk|migration|country|road|suitcase|factory|night|fled|arriv/.test(t)) add("migration");
+  if (/grandmother|grandfather|mother|father|parent|child|daughter|son|family|uncle|aunt|cousin|wedding|bride/.test(t)) add("family");
+  if (/remember|memory|forgot|childhood|young|age eight|years ago|when i was/.test(t)) add("memory");
+  if (/song|sing|language|word|voice|record|lullaby|speak/.test(t)) add("language");
+  if (/festival|celebrat|lantern|drum|dance|feast|homowo/.test(t)) add("celebration");
+  if (/river|water|forest|sky|sea|ocean|village|nature|earth|tree|amazon|dam|fish/.test(t)) add("nature");
+  if (/temple|ritual|pray|ancestor|legend|spirit|tradition|ceremon/.test(t)) add("tradition");
+  if (/die|died|death|loss|lost|gone|grief|last time|never again/.test(t)) add("loss");
+  if (/hard|survive|endure|still here|carry on|resilien|despite/.test(t)) add("resilience");
+  if (/who i am|identity|belong|name|heritage|culture|home meant/.test(t)) add("identity");
+  if (/history|war|camp|year \d{4}|letter/.test(t)) add("history");
+  if (/myth|legend|elder|told us|story passed/.test(t)) add("mythology");
+  for (const fb of ["memory","family","tradition","identity"]) {
+    if (out.length >= 4) break;
+    add(fb);
+  }
+  return out.slice(0, 4);
+}
+
+function pickEmojiForStory(text, storyType) {
+  const t = text.toLowerCase();
+  const ty = (storyType || "").toLowerCase();
+  if (/food|recipe|cook|kitchen|meal|eat|dumpling|soup|rice|bread/.test(t) || /recipe|food/.test(ty)) return "🍲";
+  if (/river|water|ocean|sea|rain|fish|boat|amazon|dam/.test(t)) return "🌊";
+  if (/train|journey|walk|road|leave|border|migration|suitcase/.test(t) || /migration/.test(ty)) return "🚶";
+  if (/wedding|marry|bride|trunk|dress|vow/.test(t)) return "💒";
+  if (/festival|lantern|drum|dance|celebrat|light/.test(t) || /celebration/.test(ty)) return "🪔";
+  if (/song|sing|music|voice|record|language|lullaby|word/.test(t) || /language|song/.test(ty)) return "🎵";
+  if (/letter|write|burn|unsent|paper|mail/.test(t)) return "✉️";
+  if (/legend|star|sky|night|spirit|temple/.test(t) || /legend|myth|village/.test(ty)) return "✨";
+  return "📖";
+}
+
+/** Same JSON shape as `transformStory` — works fully offline. */
+function buildArchiveEntryFromForm(form) {
+  const raw = (form.story || "").trim();
+  const first = raw.split(/(?<=[.!?])\s+/)[0] || raw;
+  const words = raw.toLowerCase().replace(/[^a-z\s']/g, " ").split(/\s+/).filter(w => w.length > 2 && !STOP_LABEL.has(w));
+  const label = words.slice(0, 3).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ") || "New story";
+  const tw = raw.replace(/\s+/g, " ").trim().split(/\s+/).slice(0, 9);
+  const title = tw.join(" ") + (raw.split(/\s+/).filter(Boolean).length > 9 ? "…" : "");
+  const quote = first.length > 160 ? first.slice(0, 157) + "…" : first;
+  const firstName = (form.name || "They").split(/\s+/)[0];
+  return {
+    label: label.length > 32 ? label.slice(0, 29) + "…" : label,
+    emoji: pickEmojiForStory(raw, form.type),
+    title: title.replace(/[.,;:]+$/, "") || "A story worth keeping",
+    quote,
+    story: raw,
+    themes: inferThemesFromText(raw),
+    significance: `A memory offered by ${form.name}${form.culture ? ` (${form.culture})` : ""}${form.place ? `, rooted in ${form.place}` : ""}. It joins the archive as lived history.`,
+    reflections: [
+      `What detail from ${firstName}'s story stays with you the longest?`,
+      `Who else in your life would understand this story without explanation?`,
+      `What would you preserve in the same way, if you could?`,
+    ],
+  };
+}
+
 async function transformStory(form) {
   const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,messages:[{role:"user",content:`You are the archivist of "Living Archive." Transform this raw submission into a rich archive entry.\nSTORYTELLER: ${form.name}\nHERITAGE: ${form.culture||"Not specified"}\nPLACE: ${form.place||"Not specified"}\nTYPE: ${form.type}\nRAW STORY:\n${form.story}\nRespond ONLY with valid JSON (no markdown):\n{"label":"Short 2-3 word bubble label","emoji":"One relevant emoji","title":"Poetic title (6-10 words)","quote":"Most powerful line (max 28 words)","story":"Rich 3-paragraph literary retelling. Paragraphs separated by \\n\\n.","themes":["theme1","theme2","theme3","theme4"],"significance":"2-3 sentences on cultural importance.","reflections":["Question 1?","Question 2?","Question 3?"],"lat":0,"lng":0}\n\nInclude "lat" and "lng" as decimal degrees for the PRIMARY geographic anchor of the story (one representative point — city, village, or region center). If the place is ambiguous, infer the most likely coordinates from context.`}]})});
   if(!r.ok) throw new Error("API error");
   const d=await r.json();
-  return JSON.parse((d.content||[]).map(b=>b.text||"").join("").replace(/```json|```/g,"").trim());
+  const text = (d.content||[]).map(b=>b.text||"").join("").replace(/```json|```/g,"").trim();
+  return JSON.parse(text);
 }
 
 // ── App ───────────────────────────────────────────────────────────────────────
@@ -1607,7 +1483,13 @@ export default function App() {
   const handleSubmit=async form=>{
     setShowAdd(false);setLoading(true);
     try{
-      const parsed=await transformStory(form);
+      let parsed;
+      try {
+        parsed = await transformStory(form);
+      } catch (err) {
+        console.warn("Archive API unavailable — building entry locally:", err);
+        parsed = buildArchiveEntryFromForm(form);
+      }
       const idx=entries.length%PALETTES.length;
       let lat = Number(parsed.lat ?? parsed.latitude);
       let lng = Number(parsed.lng ?? parsed.longitude ?? parsed.lon);
@@ -1660,7 +1542,7 @@ export default function App() {
   const refCallback=useCallback(id=>el=>{if(el)bubbleRefs.current[id]=el;},[]);
 
   // Ticker content
-  const tickerItems=[...SEED,...SEED].map((e,i)=>(
+  const tickerItems=[...entries,...entries].map((e,i)=>(
     <span key={i} className="ticker-item">
       {e.emoji} {e.label} <span className="ticker-sep">·</span>
     </span>

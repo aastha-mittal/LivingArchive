@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 280" width="400" height="280">
+  <defs>
+    <linearGradient id="s4sky" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#2a1a08"/>
+      <stop offset="100%" style="stop-color:#5a3a18"/>
+    </linearGradient>
+    <radialGradient id="s4glow" cx="50%" cy="55%" r="40%">
+      <stop offset="0%" style="stop-color:#f8c860;stop-opacity:.55"/>
+      <stop offset="100%" style="stop-color:#f8c860;stop-opacity:0"/>
+    </radialGradient>
+  </defs>
+  <rect width="400" height="280" fill="url(#s4sky)"/>
+  <ellipse cx="200" cy="160" rx="140" ry="80" fill="url(#s4glow)"/>
+  <rect x="175" y="95" width="50" height="70" rx="6" fill="#d4843a" opacity=".9"/>
+  <rect x="188" y="108" width="24" height="28" rx="2" fill="#f8e8a0" opacity=".7"/>
+  <ellipse cx="200" cy="200" rx="35" ry="12" fill="#8a5020" opacity=".4"/>
+  <circle cx="120" cy="130" r="22" fill="#f0a030" opacity=".75"/>
+  <circle cx="280" cy="125" r="18" fill="#e89020" opacity=".7"/>
+  <ellipse cx="200" cy="230" rx="160" ry="25" fill="#3a2010" opacity=".35"/>
+  <ellipse cx="90" cy="175" rx="12" ry="20" fill="#e8b090"/>
+  <ellipse cx="90" cy="198" rx="16" ry="12" fill="#c9a030" opacity=".5"/>
+</svg>
