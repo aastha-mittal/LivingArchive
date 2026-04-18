@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 
 const FONTS = `@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&family=DM+Sans:wght@300;400;500&display=swap');`;
 
@@ -9,15 +11,17 @@ ${FONTS}
   --bg:#f5f0e8;--ink:#0f0d0a;--ink2:#3a3530;--muted:#9a9490;
   --border:#e0d8cc;--border2:#ccc4b8;--surface:#faf7f2;--surface2:#f0ebe0;
   --chat-w:320px;--accent:#c8623e;
+  --canvas-bottom:28px;
 }
 html,body{height:100%;overflow:hidden;cursor:default}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink)}
+body.geo-map-on{background:linear-gradient(165deg,#ebe4d8 0%,#e5ddd2 45%,#ddd4c8 100%)}
 
-/* CANVAS */
-.canvas{position:fixed;inset:0;overflow:hidden;z-index:1}
+/* CANVAS (full sky; ticker strip at bottom) */
+.canvas{position:fixed;top:0;left:0;right:0;bottom:var(--canvas-bottom);overflow:hidden;z-index:1}
 
 /* PARTICLE CANVAS */
-.particle-canvas{position:fixed;inset:0;pointer-events:none;z-index:0}
+.particle-canvas{position:fixed;top:0;left:0;right:0;bottom:var(--canvas-bottom);pointer-events:none;z-index:0}
 
 /* AMBIENT TICKER */
 .ticker{position:fixed;bottom:0;left:0;right:0;z-index:8;overflow:hidden;height:28px;pointer-events:none;border-top:1px solid var(--border)}
@@ -51,6 +55,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink)}
 .btn:hover{border-color:#aaa;color:var(--ink)}
 .btn.primary{background:var(--ink);border-color:var(--ink);color:#f5f0e8}
 .btn.primary:hover{background:#2a2520;transform:translateY(-1px);box-shadow:0 4px 14px rgba(15,13,10,.18)}
+.btn.on{background:var(--surface2);border-color:var(--accent);color:var(--accent);box-shadow:0 0 0 2px rgba(200,98,62,.12)}
+.btn.on:hover{border-color:var(--accent);color:var(--ink)}
 .btn.chat-toggle{display:flex;align-items:center;gap:4px;position:relative}
 .chat-badge{position:absolute;top:-4px;right:-4px;width:15px;height:15px;background:var(--accent);border-radius:50%;font-size:8px;font-weight:700;color:white;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg)}
 
@@ -85,7 +91,65 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink)}
 @keyframes burst-fly{0%{transform:translate(0,0) scale(1);opacity:1}100%{transform:translate(var(--tx),var(--ty)) scale(0);opacity:0}}
 
 /* FLOAT QUOTE */
-.float-quotes{position:fixed;inset:0;pointer-events:none;z-index:6;overflow:hidden}
+.float-quotes{position:fixed;top:0;left:0;right:0;bottom:var(--canvas-bottom);pointer-events:none;z-index:6;overflow:hidden}
+
+body.geo-map-on .canvas,
+body.geo-map-on .particle-canvas,
+body.geo-map-on .float-quotes,
+body.geo-map-on .conn,
+body.geo-map-on .center-title{display:none!important}
+
+/* STORY MAP (full view) — warm parchment over muted tiles */
+.map-shell{display:none}
+.map-shell.map-shell--geo{display:block;position:fixed;inset:0 0 28px 0;height:auto;z-index:4;background:linear-gradient(180deg,#f2ebe2 0%,#e8dfd4 55%,#e0d6ca 100%);border-top:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}
+.map-shell.map-shell--geo::after{
+  content:'';position:absolute;inset:0;pointer-events:none;z-index:450;
+  box-shadow:inset 0 0 100px 24px rgba(245,240,232,.25),inset 0 0 200px 80px rgba(200,98,62,.04);
+  border-radius:0;
+}
+.map-shell .leaflet-container{font-family:'DM Sans',sans-serif;height:100%;width:100%;background:#e8dfd4;z-index:1}
+.map-shell .leaflet-tile-pane img{
+  filter:sepia(.22) saturate(.68) hue-rotate(352deg) brightness(1.06) contrast(.93);
+  border-radius:1px;
+}
+.map-shell .leaflet-control-zoom a{
+  width:30px;height:30px;line-height:28px;background:rgba(250,247,242,.95);color:var(--ink2);border:1px solid var(--border);
+  font-size:16px;font-weight:500;
+}
+.map-shell .leaflet-control-zoom a:hover{background:var(--surface);color:var(--ink);border-color:var(--border2)}
+.map-shell .leaflet-control-zoom a.leaflet-disabled{opacity:.35}
+.map-shell .leaflet-control-attribution{
+  background:rgba(245,240,232,.9)!important;color:var(--muted)!important;font-size:9px;line-height:1.4;
+  padding:4px 10px 4px 8px!important;margin:0!important;border-radius:10px 0 0 0;
+  border-top:1px solid var(--border);border-right:1px solid var(--border);backdrop-filter:blur(10px);max-width:70vw;
+}
+.map-shell .leaflet-control-attribution a{color:var(--accent);text-decoration:none}
+.map-shell .leaflet-control-attribution a:hover{text-decoration:underline}
+.map-shell .leaflet-popup-content-wrapper{background:var(--surface);border-radius:12px;border:1px solid var(--border);box-shadow:0 12px 36px rgba(15,13,10,.12)}
+.map-shell .leaflet-popup-tip{background:var(--surface);border:1px solid var(--border)}
+.map-shell .leaflet-popup-content{margin:10px 12px;font-size:12px;color:var(--ink2);line-height:1.5}
+.map-bubble-wrap{background:transparent!important;border:none!important;margin:0!important}
+.map-bubble{position:relative;border-radius:50%;display:flex;align-items:center;justify-content:center;text-align:center;transition:transform .2s,opacity .35s,filter .35s;box-sizing:border-box}
+.map-bubble::after{content:'';position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle at 28% 22%,rgba(255,255,255,.32),transparent 60%);pointer-events:none}
+.map-bubble:hover{transform:scale(1.08);z-index:800!important}
+.map-bubble.dim{opacity:.22;filter:saturate(0) blur(.5px);pointer-events:none}
+.map-bub-inner{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:6px;width:100%;height:100%}
+.map-bub-emoji{line-height:1}
+.map-bub-label{font-family:'Playfair Display',serif;font-style:italic;font-weight:700;line-height:1.1;color:white;text-shadow:0 1px 5px rgba(0,0,0,.55)}
+.map-bub-person{font-size:7px;font-family:'DM Sans',sans-serif;letter-spacing:.05em;text-transform:uppercase;color:rgba(255,255,255,.9);text-shadow:0 1px 3px rgba(0,0,0,.45)}
+.map-legend{
+  position:absolute;z-index:500;left:10px;top:8px;display:flex;align-items:center;gap:7px;
+  background:linear-gradient(135deg,rgba(250,247,242,.96) 0%,rgba(245,237,228,.94) 100%);
+  border:1px solid var(--border);border-radius:12px;padding:7px 12px;
+  font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink2);
+  pointer-events:none;backdrop-filter:blur(12px);
+  box-shadow:0 4px 18px rgba(15,13,10,.06),inset 0 1px 0 rgba(255,255,255,.6);
+}
+.map-legend::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--accent);flex-shrink:0;opacity:.85;animation:pip 2.2s ease-in-out infinite}
+.map-shell .leaflet-bar{border-radius:12px;overflow:hidden;border:1px solid var(--border);box-shadow:0 4px 20px rgba(15,13,10,.1)}
+.map-shell .leaflet-bar a{border-bottom-color:var(--border)}
+.map-shell .leaflet-bar a:first-child{border-radius:12px 12px 0 0}
+.map-shell .leaflet-bar a:last-child{border-radius:0 0 12px 12px;border-bottom:none}
 .fquote{position:absolute;font-family:'Playfair Display',serif;font-style:italic;color:var(--ink2);opacity:0;max-width:200px;line-height:1.5;animation:fquote-float var(--dur) ease-in-out forwards;text-align:center;letter-spacing:.01em;pointer-events:none}
 @keyframes fquote-float{0%{opacity:0;transform:translateY(8px)}15%{opacity:.13}75%{opacity:.09}100%{opacity:0;transform:translateY(-60px)}}
 
@@ -98,10 +162,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink)}
 .tooltip-hint{font-size:10px;opacity:.4;margin-top:4px;text-align:right}
 
 /* CONNECTIONS */
-.conn{position:fixed;inset:0;pointer-events:none;z-index:2}
+.conn{position:fixed;top:0;left:0;right:0;bottom:var(--canvas-bottom);pointer-events:none;z-index:2}
 
 /* STATS */
-.stats-bar{position:fixed;bottom:32px;left:20px;z-index:10;display:flex;flex-direction:column;gap:5px;pointer-events:none}
+.stats-bar{position:fixed;bottom:calc(var(--canvas-bottom) + 10px);left:20px;z-index:10;display:flex;flex-direction:column;gap:5px;pointer-events:none}
 .stat-pill{display:flex;align-items:center;gap:6px;background:rgba(245,240,232,.9);border:1px solid var(--border);border-radius:100px;padding:4px 11px;backdrop-filter:blur(12px)}
 .stat-dot{width:5px;height:5px;border-radius:50%;background:var(--accent);animation:pip 2s ease-in-out infinite}
 .stat-text{font-size:10px;color:var(--ink2);font-weight:500}
@@ -110,7 +174,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink)}
 @keyframes num-bump{0%{transform:scale(1)}50%{transform:scale(1.3)}100%{transform:scale(1)}}
 
 /* HINT */
-.hint{position:fixed;bottom:32px;right:20px;z-index:10;pointer-events:none;animation:hint-up .8s .8s ease both;opacity:0}
+.hint{position:fixed;bottom:calc(var(--canvas-bottom) + 10px);right:20px;z-index:10;pointer-events:none;animation:hint-up .8s .8s ease both;opacity:0}
 @keyframes hint-up{to{opacity:1}from{opacity:0;transform:translateY(6px)}}
 .hint p{font-family:'Playfair Display',serif;font-style:italic;font-size:11px;color:var(--muted);text-align:right;line-height:1.6}
 
@@ -337,7 +401,7 @@ const SEED=[
    story:"My grandmother made dumplings every Sunday of my childhood, and the smell of sesame oil and ginger would pull me from sleep better than any alarm. She learned from her mother in Chengdu, who learned from hers — a chain of hands stretching back through time like linked fingers.\n\nWhen she emigrated to Vancouver in 1974 with two suitcases and a worn recipe card, she brought the recipe as seriously as she brought anything else. In a new country where nobody knew our name or our food, those dumplings became how we recognized ourselves.\n\nI learned by watching. There were no measurements — a palm of flour, enough water until it talks to you, pork and cabbage mixed until it smells right. The knowledge lived in her hands, not on any page. I am still learning to translate it into mine.",
    significance:"This story captures how food operates as living memory — a technology for transmitting cultural identity across displacement and generation.",
    reflections:["What food connects you most deeply to your heritage?","What knowledge does someone in your life carry that has never been written down?","How do you preserve a tradition that lives in the body rather than on the page?"],
-   x:4,y:14,size:118},  // top-left
+   x:4,y:14,size:118,lat:49.2827,lng:-123.1207},
   {id:2,label:"The Long Walk",emoji:"🚶",p:1,likes:38,
    title:"Forty Days to the Border, a Lifetime Across It",person:"Yusuf Al-Rashid",place:"Aleppo → Berlin",culture:"Syrian",
    type:"Migration Story",themes:["migration","resilience","identity","loss"],
@@ -345,7 +409,7 @@ const SEED=[
    story:"There are things you rehearse for — job interviews, weddings, arguments with your brother. Nobody rehearses leaving.\n\nWe left in the 3am dark of a November night, my wife holding our youngest, me carrying our older daughter on my shoulders. Our neighbors watched from their windows. Nobody waved.\n\nThe journey took 40 days through four countries. We slept in an abandoned factory in Serbia where other families had scratched their names into the walls. I added ours: Al-Rashid, 2015, Syria. Germany was cold and bureaucratic and the most beautiful thing I had ever seen, because it was the end of moving.",
    significance:"Personal migration testimonies are among the most important historical documents of our era.",
    reflections:["What would you carry if you had to leave tonight?","How does a person hold two identities at once?","What does 'home' mean when you've had to leave it?"],
-   x:72,y:8,size:128},  // top-right
+   x:72,y:8,size:128,lat:52.52,lng:13.405},
   {id:3,label:"The Star Bride",emoji:"✨",p:2,likes:17,
    title:"When the Sky Came Down to Marry the River",person:"Priya Nair",place:"Kerala, India",culture:"Malayalam",
    type:"Village Legend",themes:["mythology","nature","tradition","memory"],
@@ -353,7 +417,7 @@ const SEED=[
    story:"In the village where my grandmother was born, children were taught never to turn their backs on the river at night. Not because it was dangerous, they said, but because it was watching.\n\nThe legend of the Star Bride predates memory. A celestial being descended to bathe in the Periyar and fell in love with the way it moved. She chose mortal form. The night sky, missing her, dimmed slightly — which is why, if you compare the Kerala sky to skies elsewhere, there is a softness in it, a small persistent grief.\n\nMy grandmother told this story differently each time, which I now understand was the point. The legend was a vessel. You filled it with whatever a child needed.",
    significance:"This story represents an ecosystem of oral mythology that encodes ecological relationships, moral teaching, and communal identity in narrative form.",
    reflections:["What legends shaped how you understood the world as a child?","How do stories change across generations?","What would it mean to preserve a story meant to be told, not written?"],
-   x:82,y:42,size:103},  // right-mid
+   x:82,y:42,size:103,lat:9.9312,lng:76.2673},
   {id:4,label:"Festival of Lights",emoji:"🪔",p:3,likes:31,
    title:"The Year I Carried the Lantern",person:"Amara Osei",place:"Accra, Ghana",culture:"Akan",
    type:"Celebration Memory",themes:["celebration","childhood","family","tradition"],
@@ -361,7 +425,7 @@ const SEED=[
    story:"The Homowo harvest festival happened every year but it only happened like that once — the year I was eight and my uncle chose me, specifically me, to carry the family lantern.\n\nIt was taller than I was. The light made everything golden. The drums were so loud I felt them in my chest. My grandmother pressed her palm to my forehead and said something in Twi my mother later translated as 'you carry more than light.'\n\nI've lived in London for eleven years now. I make palm nut soup on Homowo and call my mother and she calls her mother and the three of us eat at the same time across three time zones. The lantern is gone. The feeling — I still carry it.",
    significance:"Diaspora communities develop sophisticated practices for maintaining connection to home traditions across geographic distance.",
    reflections:["What childhood memory carries the most weight for you now?","How do you maintain traditions when separated from the community?","What rituals would you pass to the next generation?"],
-   x:38,y:28,size:113},  // center-upper
+   x:38,y:28,size:113,lat:5.6037,lng:-0.187},
   {id:5,label:"Last Lullaby",emoji:"🎵",p:4,likes:29,
    title:"The Last Song My Grandmother Sang",person:"Haruko Yamamoto",place:"Hokkaido, Japan",culture:"Ainu",
    type:"Song & Language",themes:["language","music","memory","loss"],
@@ -369,7 +433,7 @@ const SEED=[
    story:"The Ainu language has perhaps 300 living speakers. The number who can sing the traditional upopo — the seat songs — is far fewer. My grandmother was one of the last.\n\nI recorded her six months before she died. I set my phone on the kitchen table between her tea and mine and pressed record with shaking hands. The song is four minutes long. She sang it twice.\n\nListening now, I can hear the refrigerator hum. I can hear her breathe. A car outside. And underneath all of that, this melody older than the building we sat in, older than the nation we lived in. My daughter is three. I play her the recording. I sing along, badly. She corrects me.",
    significance:"Language death is among the most irreversible forms of cultural loss. Each language carries unique ways of conceptualizing time, relationship, and nature.",
    reflections:["Is there a song in your family that might not survive another generation?","What languages do people in your family speak that you don't?","How might you document knowledge that exists only in living memory?"],
-   x:62,y:62,size:108},  // right-lower
+   x:62,y:62,size:108,lat:43.0642,lng:141.3469},
   {id:6,label:"Wedding Trunk",emoji:"👗",p:5,likes:22,
    title:"What She Packed and What She Left Behind",person:"Fatima Al-Hassan",place:"Marrakech → Paris",culture:"Moroccan Berber",
    type:"Wedding Memory",themes:["family","tradition","identity","memory"],
@@ -377,7 +441,7 @@ const SEED=[
    story:"In my mother's family, every bride received a cedar trunk. Into it went things that could not be spoken — a grandmother's bracelet, a folded prayer, a packet of seeds from a garden that no longer exists.\n\nI grew up knowing the trunk existed and not knowing what was in it. Some things are for the woman you will become, not the girl you are.\n\nAt my wedding in Paris, my mother opened the trunk. Inside: an embroidered belt from the 1930s, a photograph of a woman I didn't recognize but whose jawline is mine exactly, a piece of paper with seven words in Tamazight that my mother whispered in my ear. I am learning Tamazight now. Slowly.",
    significance:"Material culture functions as a medium for transmitting cultural memory, particularly the inner lives of women whose experiences were rarely recorded in official history.",
    reflections:["What objects in your family carry stories never fully told?","What was passed to you at a significant moment?","What would you put in a trunk for someone you loved?"],
-   x:4,y:60,size:108},  // left-lower
+   x:4,y:60,size:108,lat:48.8566,lng:2.3522},
   {id:7,label:"River Father",emoji:"🐟",p:6,likes:19,
    title:"My Father Knew Every Bend by Name",person:"Carlos Ribeiro",place:"Amazon Basin, Brazil",culture:"Ribeirinho",
    type:"Craft & Knowledge",themes:["nature","tradition","family","resilience"],
@@ -385,7 +449,7 @@ const SEED=[
    story:"My father could navigate 200 kilometers of the Amazon River by feel. He learned from his father, who learned from his — knowledge accumulated over generations like sediment.\n\nHe knew which fish to take and which to release. He knew where the water went fast and where it held still. He knew where a village had been before the water rose and swallowed it.\n\nWhen the dam was built upstream, it changed everything. He adapted what he could. Some things could not be adapted. I bring my children to the river. I tell them what I know, which is less than what he knew. But we go. Every year.",
    significance:"Traditional ecological knowledge represents thousands of years of observation and relationship with specific environments — and vanishes when its carriers do.",
    reflections:["What practical knowledge in your family isn't written anywhere?","How do we preserve knowledge learned through doing?","What has been lost in your landscape in your lifetime?"],
-   x:30,y:72,size:103},  // bottom-center-left
+   x:30,y:72,size:103,lat:-3.119,lng:-60.0217},
   {id:8,label:"Unsent Letters",emoji:"✉️",p:7,likes:44,
    title:"The Letters My Grandfather Wrote and Never Sent",person:"James Takahashi",place:"Manzanar, California",culture:"Japanese-American",
    type:"Family History",themes:["history","resilience","identity","memory","family"],
@@ -393,13 +457,137 @@ const SEED=[
    story:"My grandfather was 19 when he was sent to Manzanar. He had been born in California. He had never been to Japan. This did not matter.\n\nDuring three years there, he wrote letters to his parents — explaining where he was, what the desert looked like, that he was trying to understand his country. He burned them before he came home. My grandmother said he stood at the edge of the road with a coffee can, and when it was done, said: 'Now we start.'\n\nThey never discussed the camp in public. My grandmother kept their story in her memory like a jewel in a fist. She told my mother everything when my mother was 40. My mother told me everything last year. I am the first person in our family to write it down.",
    significance:"The Japanese American incarceration is documented history, but the inner lives of those who experienced it remain largely unrecorded.",
    reflections:["What difficult history in your family has been kept in silence?","When is the right time to speak about painful things?","What family stories are waiting to be written down?"],
-   x:55,y:76,size:122},  // bottom-right
+   x:55,y:76,size:122,lat:36.7285,lng:-118.0729},
 ];
 
 const THEMES_ALL=["migration","family","memory","tradition","resilience","food","language","celebration","nature","mythology","identity","history"];
 const LOAD_MSGS=["Reading your story…","Finding its heartbeat…","Weaving the narrative…","Composing the archive entry…","Adding to the constellation…"];
 const TYPE_OPTS=["Family Memory","Migration Story","Village Legend","Recipe & Ritual","Celebration Memory","Song & Language","Craft & Knowledge","Wedding Memory","Family History","Oral Tradition"];
 const mkTime=m=>{const d=new Date();d.setMinutes(d.getMinutes()-m);return d;};
+
+function escHtml(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/** Rough coordinates when the model omits them — matches common place names in the archive. */
+function inferCoords(place) {
+  const p = (place || "").toLowerCase();
+  const table = [
+    ["vancouver", 49.2827, -123.1207], ["chengdu", 30.67, 104.07],
+    ["berlin", 52.52, 13.405], ["aleppo", 36.2021, 37.1343],
+    ["kerala", 9.9312, 76.2673], ["periyar", 9.9312, 76.2673],
+    ["accra", 5.6037, -0.187], ["ghana", 5.6037, -0.187],
+    ["hokkaido", 43.0642, 141.3469], ["sapporo", 43.0642, 141.3469], ["japan", 35.68, 139.76],
+    ["paris", 48.8566, 2.3522], ["marrakech", 31.6295, -7.9811], ["morocco", 31.6295, -7.9811],
+    ["amazon", -3.119, -60.0217], ["manaus", -3.119, -60.0217], ["brazil", -14.235, -51.9253],
+    ["manzanar", 36.7285, -118.0729], ["california", 36.7783, -119.4179],
+    ["london", 51.5074, -0.1278], ["lahore", 31.5204, 74.3587],
+  ];
+  for (const [key, lat, lng] of table) {
+    if (p.includes(key)) return { lat, lng };
+  }
+  let h = 0;
+  for (let i = 0; i < p.length; i++) h = ((h << 5) - h) + p.charCodeAt(i) | 0;
+  const lat = ((h % 1000) / 1000) * 110 - 55;
+  const lng = (((h >> 10) % 1000) / 1000) * 340 - 170;
+  return { lat: Math.max(-55, Math.min(72, lat)), lng: Math.max(-175, Math.min(175, lng)) };
+}
+
+function StoryMap({ entries, filter, search, searchResults, onPick, chatOpen }) {
+  const wrapRef = useRef(null);
+  const mapRef = useRef(null);
+  const layerRef = useRef(null);
+
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el || mapRef.current) return;
+    const map = L.map(el, { worldCopyJump: true, scrollWheelZoom: true });
+    mapRef.current = map;
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+      attribution: "&copy; <a href=\"https://www.openstreetmap.org/copyright\">OSM</a> &copy; <a href=\"https://carto.com/attributions\">CARTO</a>",
+      subdomains: "abcd",
+      maxZoom: 19,
+    }).addTo(map);
+    const fg = L.layerGroup().addTo(map);
+    layerRef.current = fg;
+    map.setView([18, 12], 2);
+    const onR = () => { map.invalidateSize({ animate: false }); };
+    window.addEventListener("resize", onR);
+    const fitLater = () => {
+      requestAnimationFrame(() => {
+        map.invalidateSize({ animate: false });
+        requestAnimationFrame(() => map.invalidateSize({ animate: false }));
+      });
+    };
+    fitLater();
+    return () => {
+      window.removeEventListener("resize", onR);
+      map.remove();
+      mapRef.current = null;
+      layerRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    mapRef.current?.invalidateSize({ animate: false });
+  }, [chatOpen]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    const fg = layerRef.current;
+    if (!map || !fg) return;
+    fg.clearLayers();
+    const dimmedFor = e =>
+      (filter !== null && !e.themes.includes(filter)) ||
+      (search.trim().length > 1 && !searchResults.find(r => r.id === e.id));
+    const pts = [];
+    for (const entry of entries) {
+      const la = Number(entry.lat);
+      const ln = Number(entry.lng);
+      if (!Number.isFinite(la) || !Number.isFinite(ln)) continue;
+      const dim = dimmedFor(entry);
+      const pal = PALETTES[entry.p % PALETTES.length];
+      const sz = Math.round(Math.min(78, Math.max(44, (entry.size || 100) * 0.52)));
+      const fs = (entry.size || 100) > 118 ? 11 : 9;
+      const shortName = escHtml((entry.person || "").split(" ").slice(0, 2).join(" "));
+      const html = `<div class="map-bubble${dim ? " dim" : ""}" style="width:${sz}px;height:${sz}px;background:radial-gradient(circle at 35% 28%, ${pal.bg}cc, ${pal.bg}aa);box-shadow:0 8px 22px ${pal.bg}44,0 2px 6px ${pal.bg}28,inset 0 1px 1px rgba(255,255,255,.14)">
+        <div class="map-bub-inner">
+          <span class="map-bub-emoji" style="font-size:${sz > 56 ? 17 : 14}px">${escHtml(entry.emoji)}</span>
+          <span class="map-bub-label" style="font-size:${fs}px;max-width:${Math.round(sz * 0.72)}px">${escHtml(entry.label)}</span>
+          ${sz > 52 ? `<span class="map-bub-person">${shortName}</span>` : ""}
+        </div>
+      </div>`;
+      const icon = L.divIcon({
+        className: "map-bubble-wrap",
+        html,
+        iconSize: [sz, sz],
+        iconAnchor: [sz / 2, sz / 2],
+        popupAnchor: [0, -Math.round(sz / 2)],
+      });
+      L.marker([la, ln], { icon })
+        .on("click", () => { onPick(entry); })
+        .addTo(fg);
+      pts.push(L.latLng(la, ln));
+    }
+    if (pts.length === 1) {
+      map.setView(pts[0], 5, { animate: true });
+    } else if (pts.length > 1) {
+      map.fitBounds(L.latLngBounds(pts), { padding: [36, 36], maxZoom: 6, animate: false });
+    }
+  }, [entries, filter, search, searchResults, onPick]);
+
+  return (
+    <div className="map-shell map-shell--geo">
+      <div className="map-legend">Where stories happened</div>
+      <div ref={wrapRef} style={{ position: "absolute", inset: 0 }} />
+    </div>
+  );
+}
+
 const SEED_MSGS=[
   {id:1,author:"Mei-Ling",color:"#d4845a",text:"Just shared my grandmother's dumpling story. It feels strange and wonderful to have it out in the world.",time:mkTime(48),storyRef:{label:"Nana's Dumplings",id:1}},
   {id:2,author:"Yusuf",color:"#4a9e8a",text:"Welcome Mei-Ling. Your story made me think of crossing borders with only what fits in your hands.",time:mkTime(45)},
@@ -589,18 +777,18 @@ function Connections({ entries, bubbleRefs }) {
 }
 
 // ── Bubble ────────────────────────────────────────────────────────────────────
-function Bubble({ entry, onClick, onHover, dimmed, index, chatOpen }) {
+function Bubble({ entry, onClick, onHover, dimmed, index, chatOpen, bottomPad }) {
   const el = useRef(null);
   const state = useRef({
     x:(entry.x/100)*window.innerWidth,
-    y:(entry.y/100)*window.innerHeight,
+    y:(entry.y/100)*(window.innerHeight-bottomPad),
     vx:(Math.random()-.5)*.18, vy:(Math.random()-.5)*.18, ax:0, ay:0
   });
   const hovering = useRef(false);
   const raf = useRef(null);
   const pal = PALETTES[entry.p%PALETTES.length];
   const ix = ((entry.x/100)*window.innerWidth) + "px";
-  const iy = ((entry.y/100)*window.innerHeight) + "px";
+  const iy = ((entry.y/100)*(window.innerHeight-bottomPad)) + "px";
 
   useEffect(() => {
     const s=entry.size;
@@ -618,7 +806,7 @@ function Bubble({ entry, onClick, onHover, dimmed, index, chatOpen }) {
         raf.current=requestAnimationFrame(tick);
         return;
       }
-      const vw=window.innerWidth-(chatOpen?320:0), vh=window.innerHeight;
+      const vw=window.innerWidth-(chatOpen?320:0), vh=window.innerHeight-bottomPad;
       p.vx+=p.ax;p.vy+=p.ay;p.ax=0;p.ay=0;
       p.vx*=.992;p.vy*=.992;
       const spd=Math.sqrt(p.vx*p.vx+p.vy*p.vy);
@@ -635,7 +823,7 @@ function Bubble({ entry, onClick, onHover, dimmed, index, chatOpen }) {
     };
     const delay=setTimeout(()=>{raf.current=requestAnimationFrame(tick);},index*100);
     return()=>{clearTimeout(delay);cancelAnimationFrame(raf.current);window.removeEventListener("mousemove",onMove);};
-  },[entry.size,index,chatOpen]);
+  },[entry.size,index,chatOpen,bottomPad]);
 
   const fs=entry.size>118?13:11;
   return (
@@ -1355,7 +1543,7 @@ function ChatPanel({ open, onClose, msgs, onSend, unlocked, onUnlock, onOpenStor
 
 // ── AI ────────────────────────────────────────────────────────────────────────
 async function transformStory(form) {
-  const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,messages:[{role:"user",content:`You are the archivist of "Living Archive." Transform this raw submission into a rich archive entry.\nSTORYTELLER: ${form.name}\nHERITAGE: ${form.culture||"Not specified"}\nPLACE: ${form.place||"Not specified"}\nTYPE: ${form.type}\nRAW STORY:\n${form.story}\nRespond ONLY with valid JSON (no markdown):\n{"label":"Short 2-3 word bubble label","emoji":"One relevant emoji","title":"Poetic title (6-10 words)","quote":"Most powerful line (max 28 words)","story":"Rich 3-paragraph literary retelling. Paragraphs separated by \\n\\n.","themes":["theme1","theme2","theme3","theme4"],"significance":"2-3 sentences on cultural importance.","reflections":["Question 1?","Question 2?","Question 3?"]}`}]})});
+  const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,messages:[{role:"user",content:`You are the archivist of "Living Archive." Transform this raw submission into a rich archive entry.\nSTORYTELLER: ${form.name}\nHERITAGE: ${form.culture||"Not specified"}\nPLACE: ${form.place||"Not specified"}\nTYPE: ${form.type}\nRAW STORY:\n${form.story}\nRespond ONLY with valid JSON (no markdown):\n{"label":"Short 2-3 word bubble label","emoji":"One relevant emoji","title":"Poetic title (6-10 words)","quote":"Most powerful line (max 28 words)","story":"Rich 3-paragraph literary retelling. Paragraphs separated by \\n\\n.","themes":["theme1","theme2","theme3","theme4"],"significance":"2-3 sentences on cultural importance.","reflections":["Question 1?","Question 2?","Question 3?"],"lat":0,"lng":0}\n\nInclude "lat" and "lng" as decimal degrees for the PRIMARY geographic anchor of the story (one representative point — city, village, or region center). If the place is ambiguous, infer the most likely coordinates from context.`}]})});
   if(!r.ok) throw new Error("API error");
   const d=await r.json();
   return JSON.parse((d.content||[]).map(b=>b.text||"").join("").replace(/```json|```/g,"").trim());
@@ -1383,6 +1571,14 @@ export default function App() {
   const [heartsBumped,setHeartsBumped]=useState(false);
   const [bursts,setBursts]=useState([]);
   const bubbleRefs=useRef({});
+  const [geoMapView,setGeoMapView]=useState(false);
+
+  useEffect(()=>{
+    document.body.classList.toggle("geo-map-on",geoMapView);
+    return()=>document.body.classList.remove("geo-map-on");
+  },[geoMapView]);
+
+  const canvasBottomPad=28;
 
   const showToast=msg=>{setToast(msg);setTimeout(()=>setToast(null),3200);};
 
@@ -1413,9 +1609,16 @@ export default function App() {
     try{
       const parsed=await transformStory(form);
       const idx=entries.length%PALETTES.length;
+      let lat = Number(parsed.lat ?? parsed.latitude);
+      let lng = Number(parsed.lng ?? parsed.longitude ?? parsed.lon);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        const g = inferCoords(form.place);
+        lat = g.lat;
+        lng = g.lng;
+      }
       const entry={
         ...parsed,id:Date.now(),p:idx,likes:0,person:form.name,place:form.place||"Unknown",culture:form.culture||"Unknown",type:form.type,
-        x:8+Math.random()*74,y:15+Math.random()*62,size:100+Math.floor(Math.random()*26),
+        x:8+Math.random()*74,y:15+Math.random()*62,size:100+Math.floor(Math.random()*26),lat,lng,
         ...(form.videoUrl ? { videoUrl: form.videoUrl } : {}),
       };
       await new Promise(r=>setTimeout(r,500));
@@ -1483,7 +1686,7 @@ export default function App() {
             <div key={e.id} ref={refCallback(e.id)} style={{position:"absolute",left:0,top:0}}>
               <Bubble entry={e} onClick={setSelected}
                 onHover={(entry,ev)=>setTooltip(entry?{entry,pos:{x:ev.clientX,y:ev.clientY}}:{entry:null,pos:null})}
-                dimmed={dimmed} index={i} chatOpen={chatOpen}/>
+                dimmed={dimmed} index={i} chatOpen={chatOpen} bottomPad={canvasBottomPad}/>
             </div>
           );
         })}
@@ -1504,6 +1707,9 @@ export default function App() {
         </div>
         <div className="nav-right">
           {filter&&<button className="btn" onClick={()=>setFilter(null)}>✕ {filter}</button>}
+          <button type="button" className={`btn ${geoMapView?"on":""}`} onClick={()=>setGeoMapView(v=>!v)} title={geoMapView?"Return to the sky view":"Show stories on a world map"}>
+            {geoMapView?"🌌 Sky":"🗺️ Map"}
+          </button>
           <button className="btn" onClick={pickRandom}>🎲 Random</button>
           <button className="btn primary" onClick={()=>setShowAdd(true)}>+ Preserve</button>
           <button className="btn chat-toggle" onClick={openChat}>
@@ -1553,9 +1759,23 @@ export default function App() {
       </div>
 
       <div className="hint">
-        <p>Hover to preview · Click to read</p>
-        <p>Move mouse to push bubbles</p>
+        {geoMapView?(
+          <>
+            <p>Drag to pan · Scroll to zoom</p>
+            <p>Click a bubble to read its story</p>
+          </>
+        ):(
+          <>
+            <p>Hover to preview · Click to read</p>
+            <p>Move mouse to push bubbles · Map shows where stories belong</p>
+          </>
+        )}
       </div>
+
+      {geoMapView&&(
+        <StoryMap entries={entries} filter={filter} search={search} searchResults={searchResults}
+          onPick={setSelected} chatOpen={chatOpen}/>
+      )}
 
       <Tooltip entry={tooltip.entry} pos={tooltip.pos}/>
 
