@@ -92,6 +92,7 @@ body.geo-map-on{background:linear-gradient(165deg,#ebe4d8 0%,#e5ddd2 45%,#ddd4c8
 .bub-person{font-size:8px;font-family:'DM Sans',sans-serif;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.88);font-weight:500;text-shadow:0 1px 4px rgba(0,0,0,.45)}
 .bub-likes{position:absolute;bottom:-6px;right:-6px;background:white;border-radius:100px;padding:2px 6px;font-size:9px;font-weight:700;color:var(--ink2);box-shadow:0 2px 8px rgba(0,0,0,.15);display:flex;align-items:center;gap:2px;border:1px solid var(--border);transition:transform .2s}
 .bub:hover .bub-likes{transform:scale(1.1)}
+.bub-private-lock{position:absolute;top:-6px;right:-6px;background:white;border-radius:50%;width:18px;height:18px;font-size:10px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.18);border:1px solid var(--border)}
 
 /* BURST */
 .burst{position:fixed;pointer-events:none;z-index:100}
@@ -264,6 +265,7 @@ body.geo-map-on{background:linear-gradient(165deg,#ebe4d8 0%,#e5ddd2 45%,#ddd4c8
 .smhero-ov{position:absolute;inset:0;background:linear-gradient(to top,rgba(250,247,242,1) 0%,rgba(250,247,242,.3) 55%,transparent 100%)}
 .smhero-content{position:relative;z-index:1}
 .sm-chip{font-size:10px;letter-spacing:.12em;text-transform:uppercase;padding:4px 10px;border-radius:20px;display:inline-block;font-weight:500;margin-bottom:8px}
+.sm-private-badge{font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:4px 10px;border-radius:20px;display:inline-flex;align-items:center;gap:4px;font-weight:500;margin-bottom:8px;background:rgba(0,0,0,.18);color:rgba(255,255,255,.9);border:1px solid rgba(255,255,255,.2)}
 .sm-title{font-family:'Playfair Display',serif;font-size:clamp(20px,3.5vw,30px);font-weight:400;color:var(--ink);line-height:1.15;margin-bottom:4px}
 .sm-meta{font-size:12px;color:var(--muted);letter-spacing:.04em}
 .sm-close{position:absolute;top:14px;right:14px;width:30px;height:30px;border-radius:50%;background:rgba(250,247,242,.9);border:1px solid var(--border);color:var(--ink2);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;z-index:10;transition:all .2s}
@@ -274,6 +276,15 @@ body.geo-map-on{background:linear-gradient(165deg,#ebe4d8 0%,#e5ddd2 45%,#ddd4c8
 .sm-act-btn.liked{background:#fff8f5;border-color:#f4d0c0;color:var(--accent)}
 .sm-act-btn.liked .h-icon{animation:heartpop .35s ease}
 @keyframes heartpop{0%{transform:scale(1)}40%{transform:scale(1.6)}100%{transform:scale(1)}}
+.sm-delete-btn{margin-left:auto;color:#b94040}
+.sm-delete-btn:hover{background:#fff0f0;border-color:#f4c0c0;color:#b94040}
+.sm-confirm-delete{margin:0 26px 0;padding:14px 16px;background:#fff8f8;border:1px solid #f4c0c0;border-radius:10px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.sm-confirm-text{font-size:13px;color:var(--ink2);margin:0;flex:1}
+.sm-confirm-btns{display:flex;gap:8px;flex-shrink:0}
+.sm-confirm-cancel{padding:6px 14px;border-radius:100px;border:1px solid var(--border);background:transparent;font-size:12px;cursor:pointer;color:var(--muted)}
+.sm-confirm-cancel:hover{background:var(--surface2)}
+.sm-confirm-go{padding:6px 14px;border-radius:100px;border:1px solid #f4c0c0;background:#b94040;color:white;font-size:12px;font-weight:600;cursor:pointer}
+.sm-confirm-go:hover{background:#a03030}
 .smbody{padding:20px 26px 28px}
 .sm-quote{font-family:'Playfair Display',serif;font-style:italic;font-size:17px;line-height:1.65;color:var(--ink2);border-left:1px solid var(--border2);padding:8px 0 8px 18px;margin-bottom:22px;font-weight:300}
 .sm-sec{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:500;margin-bottom:10px}
@@ -316,6 +327,11 @@ body.geo-map-on{background:linear-gradient(165deg,#ebe4d8 0%,#e5ddd2 45%,#ddd4c8
 .astory-count{font-variant-numeric:tabular-nums}
 .astory-count.warn{color:var(--accent)}
 .avideo-hint{font-size:11px;color:var(--muted);line-height:1.5;margin-top:4px}
+.aprivate-toggle{display:flex;align-items:flex-start;gap:10px;cursor:pointer;user-select:none}
+.aprivate-switch{width:36px;height:20px;border-radius:10px;background:var(--border2);position:relative;transition:background .2s;flex-shrink:0;margin-top:2px;border:1px solid var(--border)}
+.aprivate-switch.on{background:var(--ink)}
+.aprivate-knob{width:14px;height:14px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.aprivate-switch.on .aprivate-knob{transform:translateX(16px)}
 .avideo-preview{width:100%;max-height:160px;border-radius:8px;margin-top:8px;background:var(--ink)}
 .avideo-file{font-size:12px;color:var(--ink2)}
 .aselect{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239a9490'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;cursor:pointer}
@@ -869,6 +885,7 @@ function Bubble({ entry, onClick, onHover, dimmed, index, chatOpen, bottomPad })
           {entry.size>105&&<span className="bub-person">{entry.person.split(" ").slice(0,2).join(" ")}</span>}
         </div>
         {!dimmed&&<div className="bub-likes">❤ {entry.likes}</div>}
+        {entry.isPrivate&&<div className="bub-private-lock">🔒</div>}
       </div>
     </div>
   );
@@ -890,89 +907,475 @@ function Tooltip({ entry, pos }) {
 }
 
 // ── Local scrapbook (TypeScript: ../lib/scrapbookGenerator + sceneImageGenerator) ──
+// ── Scrapbook AI (story → analysis + N pages → image + SVG per page) ──────────
+const SCRAPBOOK_PAGE_COUNT = 3;
+
+async function callClaude(prompt, maxTokens = 2000) {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "anthropic-dangerous-direct-browser-access": "true",
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: maxTokens,
+      messages: [{ role: "user", content: prompt }]
+    })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(`API ${res.status}: ${err?.error?.message || "unknown"}`);
+  }
+  const d = await res.json();
+  const text = (d.content || []).map(b => b.text || "").join("");
+  return text.replace(/^```(?:json)?\s*/m, "").replace(/\s*```\s*$/m, "").trim();
+}
+
+function parseJsonRobust(raw) {
+  const stripped = raw.replace(/^```(?:json)?\s*/m, "").replace(/\s*```\s*$/m, "").trim();
+  try {
+    return JSON.parse(stripped);
+  } catch {
+    const i = stripped.indexOf("{");
+    const j = stripped.lastIndexOf("}");
+    if (i >= 0 && j > i) return JSON.parse(stripped.slice(i, j + 1));
+    throw new Error("Could not parse model JSON");
+  }
+}
+
+/** Heuristic plan when the API is unavailable — still story-specific. */
+function buildFallbackScrapbookPlan(entry) {
+  const n = SCRAPBOOK_PAGE_COUNT;
+  const story = (entry.story || "").trim();
+  const paras = story.split(/\n\n+/).map(p => p.trim()).filter(Boolean);
+  let chunks = [];
+  if (paras.length >= n) {
+    const pick = [];
+    for (let k = 0; k < n; k++) {
+      if (paras.length === n) pick.push(k);
+      else if (k === 0) pick.push(0);
+      else if (k === n - 1) pick.push(paras.length - 1);
+      else pick.push(Math.round(((k / (n - 1)) * (paras.length - 1))));
+    }
+    chunks = pick.map(i => paras[Math.min(i, paras.length - 1)]);
+  } else {
+    const sentences = story.split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(s => s.length > 12);
+    for (let i = 0; i < n; i++) {
+      const idx = sentences.length >= n
+        ? Math.floor((i / Math.max(1, n - 1)) * (sentences.length - 1))
+        : Math.min(i, Math.max(0, sentences.length - 1));
+      chunks.push(sentences[idx] || story.slice(i * 120, (i + 1) * 120) || story);
+    }
+  }
+  const titleFrom = (t, i) => {
+    const line = t.replace(/\s+/g, " ").trim();
+    const short = line.slice(0, 52);
+    return line.length > 52 ? `${short}…` : short || `Moment ${i + 1}`;
+  };
+  const pages = chunks.map((chunk, i) => ({
+    sceneTitle: titleFrom(chunk, i),
+    caption: chunk.length > 140 ? `${chunk.slice(0, 137)}…` : chunk,
+    imagePrompt: `Wholesome, nostalgic, hand-painted Studio Ghibli–inspired storybook scene, soft natural light, warm palette, expressive faces: ${chunk}`,
+    visualDetails: `Composition grounded in this passage: ${chunk}`,
+    emotion: "nostalgia",
+  }));
+  return {
+    analysis: {
+      people: entry.person ? [entry.person] : [],
+      relationships: "",
+      setting: entry.place || "",
+      timePeriod: "",
+      keyObjects: [],
+      emotions: [],
+      keyEvents: [],
+    },
+    pages,
+    fallback: true,
+  };
+}
+
+async function buildScrapbookPlan(entry) {
+  const n = SCRAPBOOK_PAGE_COUNT;
+  const prompt = `You are designing a deeply personalized ${n}-page memory scrapbook for ONE archive entry. The scrapbook must be grounded ONLY in the story text below — not generic cultural filler.
+
+ARCHIVE METADATA:
+- Title: ${entry.title}
+- Storyteller: ${entry.person}
+- Culture: ${entry.culture}
+- Place: ${entry.place}
+- Type: ${entry.type}
+
+FULL STORY (sole source of truth — read every sentence):
+"""
+${entry.story}
+"""
+
+STEP 1 — Extract from THIS story only:
+- people: string[] (names or roles: e.g. "grandmother", "narrator as a child")
+- relationships: short string (who to whom)
+- setting: where scenes unfold (be specific if the text is)
+- timePeriod: era, year, or life stage if mentioned
+- keyObjects: string[] (concrete things: recipe card, lantern, train, temple, dumplings, phone recorder, cedar trunk, river, etc.)
+- emotions: string[] (emotions named or clearly implied)
+- keyEvents: string[] (short phrases for what happens, in narrative order where possible)
+
+STEP 2 — Create exactly ${n} scrapbook pages (not more, not fewer). Each page = one real moment from the story (chronological through the narrative OR an emotionally meaningful order that still maps to real events in the text). Do not invent major events not supported by the story.
+
+For EACH page output:
+- sceneTitle: specific to this story (not generic like "family together")
+- caption: one warm sentence, max ~24 words, names/objects from the story when possible
+- imagePrompt: 3–5 sentences. Highly specific: WHO (roles/names), clothing/age if inferable, WHERE, WHAT is happening, KEY OBJECTS, lighting, weather, emotional atmosphere. Style: wholesome, nostalgic, hand-painted, Studio Ghibli–inspired, soft diffused natural light, warm earth and botanical palette, expressive faces, cinematic storybook composition — but the SUBJECT must be literal from the story above.
+- visualDetails: 2–4 sentences on layout: foreground / midground / background, key props, palette, focal emotion
+- emotion: one of: warmth, joy, grief, wonder, longing, pride, tenderness, resilience, love, nostalgia, hope, bittersweet
+
+If the story mentions something concrete (grandmother cooking, migration train, child at festival, courtyard, recipe card, village, temple, lullaby, recording on a phone), those details MUST appear on the pages where they belong.
+
+Return ONLY valid JSON (no markdown):
+{"analysis":{"people":[],"relationships":"","setting":"","timePeriod":"","keyObjects":[],"emotions":[],"keyEvents":[]},"pages":[{"sceneTitle":"","caption":"","imagePrompt":"","visualDetails":"","emotion":""}]}`;
+
+  const raw = await callClaude(prompt, 6000);
+  const parsed = parseJsonRobust(raw);
+  if (!parsed.pages || !Array.isArray(parsed.pages) || parsed.pages.length < 1) {
+    throw new Error("Invalid scrapbook plan");
+  }
+  const pages = parsed.pages.slice(0, n);
+  while (pages.length < n) {
+    pages.push({
+      sceneTitle: `Reflection ${pages.length + 1}`,
+      caption: entry.quote || entry.title,
+      imagePrompt: `Warm nostalgic Ghibli-inspired scene echoing: ${entry.title}`,
+      visualDetails: "Soft light, intimate framing, emotional closure.",
+      emotion: "nostalgia",
+    });
+  }
+  return { analysis: parsed.analysis || {}, pages: pages.slice(0, n), fallback: false };
+}
+
+async function generateSceneSVG(scene, entry, analysis) {
+  const analysisStr = typeof analysis === "object" && analysis
+    ? JSON.stringify(analysis, null, 0).slice(0, 1800)
+    : String(analysis || "");
+  const raw = await callClaude(`You are an illustrator who outputs ONE self-contained SVG. The scene must depict the SPECIFIC moment below — not a generic village or anonymous figures. Use details from the image prompt.
+
+ARCHIVE: ${entry.person} · ${entry.culture} · ${entry.place}
+TITLE: ${entry.title}
+
+STORY ANALYSIS (for consistency): ${analysisStr}
+
+PAGE:
+- sceneTitle: ${scene.sceneTitle}
+- caption: ${scene.caption}
+- emotion: ${scene.emotion || "nostalgia"}
+- visualDetails: ${scene.visualDetails || ""}
+- IMAGE PROMPT (primary — illustrate this exactly): ${scene.imagePrompt || scene.visualDescription || ""}
+
+VISUAL STYLE (apply on top of literal subject matter):
+- Wholesome, nostalgic, hand-painted, Studio Ghibli–inspired
+- Soft natural / golden-hour light, warm greens, terracotta, cream, sky blues
+- Expressive simple character silhouettes; round soft shapes
+- Storybook / memory-like composition, gentle depth
+
+SVG RULES:
+- viewBox="0 0 400 280" xmlns="http://www.w3.org/2000/svg"
+- Use <defs> with at least one soft radialGradient for atmosphere
+- Three layers: background (setting), midground (figures/action), foreground (key objects)
+- At least 12 distinct elements using path, ellipse, rect, circle, polygon, line as needed
+- Show concrete props from the prompt (food, lantern, train, water, buildings, instruments, etc.) when mentioned
+- NO text, letters, or captions inside the SVG
+
+Return ONLY the raw <svg>...</svg> element. No markdown or explanation.`, 4500);
+  const svgMatch = raw.match(/<svg[\s\S]*?<\/svg>/i);
+  return svgMatch ? svgMatch[0] : raw.includes("<svg") ? raw : null;
+}
+
+/** One API call for all scrapbook panels — avoids per-page rate limits so every story gets real art. */
+async function generateAllScrapbookSvgs(scenes, entry, analysis) {
+  const analysisStr = typeof analysis === "object" && analysis
+    ? JSON.stringify(analysis, null, 0).slice(0, 1200)
+    : String(analysis || "");
+  const blocks = scenes.map((scene, idx) => {
+    const ip = String(scene.imagePrompt || "").slice(0, 800);
+    const vd = String(scene.visualDetails || "").slice(0, 350);
+    return `SCENE ${idx + 1}:
+- sceneTitle: ${scene.sceneTitle}
+- caption: ${scene.caption}
+- emotion: ${scene.emotion || "nostalgia"}
+- visualDetails: ${vd}
+- illustrate (from this story): ${ip}`;
+  }).join("\n\n");
+
+  const raw = await callClaude(`You are an illustrator. Output EXACTLY THREE complete SVG files — one for SCENE 1, one for SCENE 2, one for SCENE 3 — in that order. Each must depict that SPECIFIC moment (not a generic village or anonymous figures).
+
+ARCHIVE: ${entry.person} · ${entry.culture} · ${entry.place}
+TITLE: ${entry.title}
+
+STORY ANALYSIS (consistency): ${analysisStr}
+
+${blocks}
+
+VISUAL STYLE (all three):
+- Wholesome, nostalgic, hand-painted, Studio Ghibli–inspired
+- Soft natural / golden-hour light, warm greens, terracotta, cream, sky blues
+- Expressive simple shapes; storybook composition
+
+EACH SVG MUST:
+- Use viewBox="0 0 400 280" and xmlns="http://www.w3.org/2000/svg"
+- Include <defs> with at least one soft radialGradient
+- At least 10 distinct elements (path, ellipse, rect, circle, polygon, line, etc.)
+- Show concrete props from that scene when possible (food, water, buildings, instruments, etc.)
+- NO text, letters, or captions inside any SVG
+
+OUTPUT: Output only the three raw <svg>...</svg> elements in order (scene 1, then 2, then 3). Put a single blank line between SVGs. No markdown fences. No commentary.`, 8192);
+  const matches = raw.match(/<svg[\s\S]*?<\/svg>/gi);
+  if (!matches || matches.length === 0) {
+    return [null, null, null];
+  }
+  const out = [null, null, null];
+  for (let i = 0; i < 3; i++) {
+    out[i] = matches[i] || null;
+  }
+  return out;
+}
+
+async function generateSceneSvgWithRetry(scene, entry, analysis) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const svg = await generateSceneSVG(scene, entry, analysis);
+      if (svg) return svg;
+    } catch (e) {
+      console.warn("Scrapbook SVG attempt", attempt + 1, e);
+    }
+    if (attempt < 1) await new Promise(r => setTimeout(r, 600));
+  }
+  return null;
+}
+
+/** Decorative placeholder so every page always has art if Claude fails or rate-limits. */
+function buildFallbackSceneSvg(accentHex, pageIndex) {
+  const gid = `sbfg${pageIndex}`;
+  const c = accentHex || "#c8623e";
+  return `<svg viewBox="0 0 400 280" xmlns="http://www.w3.org/2000/svg"><defs><radialGradient id="${gid}"><stop offset="0%" stop-color="${c}" stop-opacity="0.35"/><stop offset="100%" stop-color="#faf7f2"/></radialGradient></defs><rect width="400" height="280" fill="url(#${gid})"/><ellipse cx="200" cy="170" rx="150" ry="95" fill="${c}" opacity="0.12"/><circle cx="300" cy="75" r="48" fill="${c}" opacity="0.18"/><path d="M40 200 Q200 120 360 200" fill="none" stroke="${c}" stroke-width="3" opacity="0.25"/></svg>`;
+}
+
+function compactPrompt(input, maxLen = 260) {
+  const clean = String(input || "")
+    .replace(/\s+/g, " ")
+    // Keep letters from any script (do not strip non-Latin — that broke prompts for many stories).
+    .replace(/[^\p{L}\p{N}\s,.'\-–—]/gu, "")
+    .trim();
+  return clean.length > maxLen ? `${clean.slice(0, maxLen - 1)}…` : clean;
+}
+
+function buildMinimalRasterPrompt(entry) {
+  const bits = [
+    entry?.title,
+    entry?.label,
+    entry?.type,
+    entry?.place,
+    entry?.culture,
+    "storybook illustration warm light nostalgic hand painted",
+    "no text"
+  ].filter(Boolean);
+  return compactPrompt(bits.join(", "), 220);
+}
+
+/** Short English-friendly prompt for Pollinations (GET image.pollinations.ai — often rate-limited). */
+function buildRasterPromptForUrl(scene, entry) {
+  const core = [
+    scene?.sceneTitle,
+    scene?.caption,
+    scene?.emotion ? `mood ${scene.emotion}` : "",
+    entry?.place,
+    entry?.culture,
+    "nostalgic hand painted storybook illustration",
+    "soft light expressive faces",
+    "no text no watermark"
+  ]
+    .filter(Boolean)
+    .map(p => compactPrompt(p, 100))
+    .join(", ");
+  let prompt = compactPrompt(core, 340);
+  if (!prompt || prompt.length < 12) prompt = buildMinimalRasterPrompt(entry);
+  return prompt;
+}
+
+function buildRasterCandidateUrls(scene, entry, pageIndex, nonce = 0) {
+  const seedBase = Number(String(entry?.id || Date.now()).slice(-6)) + pageIndex * 101 + nonce * 67;
+  const prompt = buildRasterPromptForUrl(scene, entry);
+  const enc = encodeURIComponent(prompt);
+  // Smaller dimensions = faster + less likely to time out. Only image.pollinations.ai works without an API key (gen.pollinations.ai returns 401 for anonymous).
+  return [
+    `https://image.pollinations.ai/prompt/${enc}?width=768&height=512&model=turbo&seed=${seedBase}&nologo=true`,
+    `https://image.pollinations.ai/prompt/${enc}?width=896&height=616&model=flux&seed=${seedBase + 19}&nologo=true`,
+    `https://image.pollinations.ai/prompt/${enc}?width=640&height=448&seed=${seedBase + 31}&nologo=true&safe=true`,
+    `https://image.pollinations.ai/prompt/${encodeURIComponent(buildMinimalRasterPrompt(entry))}?width=512&height=384&model=turbo&seed=${seedBase + 47}&nologo=true`,
+  ];
+}
+
+function preloadImageUrl(url, timeoutMs = 8000) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const timer = setTimeout(() => {
+      img.src = "";
+      reject(new Error("timeout"));
+    }, timeoutMs);
+    img.onload = () => {
+      clearTimeout(timer);
+      resolve(url);
+    };
+    img.onerror = () => {
+      clearTimeout(timer);
+      reject(new Error("load error"));
+    };
+    img.referrerPolicy = "no-referrer";
+    img.src = url;
+  });
+}
+
+/** Optional photo overlay; returns null if service is down / rate-limited — SVG still shows. */
+async function findWorkingRasterUrl(scene, entry, pageIndex, nonce = 0) {
+  const urls = buildRasterCandidateUrls(scene, entry, pageIndex, nonce);
+  for (const url of urls) {
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      return await preloadImageUrl(url, 9000);
+    } catch {
+      /* try next candidate */
+    }
+  }
+  return null;
+}
 
 const SB_GEN_STEPS = [
   "Reading this archive entry…",
   "Extracting people, places, objects…",
-  "Ordering five real moments…",
-  "Painting scene 1…",
-  "Painting scene 2…",
-  "Painting scene 3…",
-  "Painting scene 4…",
-  "Painting scene 5…",
+  `Ordering ${SCRAPBOOK_PAGE_COUNT} real moments…`,
+  ...Array.from({ length: SCRAPBOOK_PAGE_COUNT }, (_, i) => `Painting scene ${i + 1}…`),
 ];
+const SB_TOTAL_STEPS = SB_GEN_STEPS.length;
 
 const EMOTION_COLORS = {
   warmth:"#d4845a", joy:"#c9a030", wonder:"#4a9e8a", longing:"#5a82c4",
   grief:"#8a8aaa", pride:"#5aaa78", tenderness:"#c46898", resilience:"#8a6a3a",
-  gratitude:"#6a9a6a", love:"#c46898", nostalgia:"#a07850", hope:"#5aaa78", bittersweet:"#a07868",
-  fear:"#8a7a90", loss:"#9a9490"
+  gratitude:"#6a9a6a", love:"#c46898", nostalgia:"#a07850", hope:"#5aaa78", bittersweet:"#a07868"
 };
 
-function scrapbookEntryFromBubble(entry) {
-  return {
-    title: entry.title,
-    story: entry.story,
-    person: entry.person,
-    place: entry.place,
-    culture: entry.culture,
-  };
-}
-
-/** Hardcoded art for the 8 seed bubbles (ids 1–8). User-submitted entries use canvas fallback. */
-function getSeedStoryScrapbookImageUrl(entryId) {
-  if (entryId >= 1 && entryId <= 8) return `/stories/story-${entryId}.svg`;
-  return null;
-}
-
-function formatScrapbookVisualBlock(vd) {
-  if (!vd || typeof vd !== "object") return null;
-  const lines = [
-    vd.characters?.length ? `Who: ${vd.characters.join(", ")}` : null,
-    vd.setting ? `Where: ${vd.setting}` : null,
-    vd.importantObjects?.length ? `Objects: ${vd.importantObjects.join(", ")}` : null,
-    vd.lighting ? `Light: ${vd.lighting}` : null,
-    vd.colorPalette ? `Palette: ${vd.colorPalette}` : null,
-  ].filter(Boolean);
-  return lines.length ? lines.join(" · ") : null;
-}
-
-// ── Scrapbook Component (100% local — ../lib/scrapbookGenerator.ts) ───────────
+// ── Scrapbook Component ───────────────────────────────────────────────────────
 function Scrapbook({ entry, onClose }) {
   const [pages, setPages] = useState([]);
-  const [signalsLine, setSignalsLine] = useState("");
+  const [analysis, setAnalysis] = useState(null);
+  const [usedFallbackPlan, setUsedFallbackPlan] = useState(false);
   const [current, setCurrent] = useState(0);
   const [genStep, setGenStep] = useState(0);
   const [done, setDone] = useState(false);
+  const [planDone, setPlanDone] = useState(false);
   const [autoPlay, setAutoPlay] = useState(false);
+  const [genError, setGenError] = useState(null);
+  const [retryingPage, setRetryingPage] = useState(null);
   const autoRef = useRef(null);
   const pal = PALETTES[entry.p % PALETTES.length];
 
   useEffect(() => {
-    setPages([]);
-    setDone(false);
-    setGenStep(0);
-    const id = requestAnimationFrame(() => {
+    let cancelled = false;
+    (async () => {
       try {
-        const arc = scrapbookEntryFromBubble(entry);
-        setSignalsLine(formatSignalsLine(extractStorySignals(arc)));
-        const plan = generateScrapbookPages(arc);
-        setGenStep(8);
-        const seedArt = getSeedStoryScrapbookImageUrl(entry.id);
-        const built = plan.map((p) => ({
-          ...p,
-          imageUrl: seedArt || generateSceneImageDataUrl(p, arc),
-        }));
-        setPages(built);
+        setGenError(null);
+        setGenStep(1);
+        let plan;
+        try {
+          plan = await buildScrapbookPlan(entry);
+        } catch (planErr) {
+          console.warn("Scrapbook plan API:", planErr);
+          plan = buildFallbackScrapbookPlan(entry);
+          if (!cancelled) setUsedFallbackPlan(true);
+        }
+        if (cancelled) return;
+        setAnalysis(plan.analysis || {});
+        setPlanDone(true);
+        setGenStep(3);
+        const scenePages = (plan.pages || []).slice(0, SCRAPBOOK_PAGE_COUNT);
+        let bundleSvgs = [null, null, null];
+        try {
+          bundleSvgs = await generateAllScrapbookSvgs(scenePages, entry, plan.analysis || {});
+        } catch (e) {
+          console.warn("Scrapbook bundle SVG:", e);
+        }
+        for (let i = 0; i < scenePages.length; i++) {
+          if (cancelled) return;
+          setGenStep(4 + i);
+          const scene = scenePages[i];
+          let svg = bundleSvgs[i];
+          if (!svg) {
+            if (i > 0) await new Promise(r => setTimeout(r, 400));
+            svg = await generateSceneSvgWithRetry(scene, entry, plan.analysis || {});
+          }
+          if (!svg) svg = buildFallbackSceneSvg(pal.bg, i);
+          if (cancelled) return;
+          const row = {
+            ...scene,
+            svg,
+            rasterUrl: null,
+            rasterNonce: 0,
+            noSvg: false,
+          };
+          setPages(p => [...p, row]);
+          if (i === 0) setCurrent(0);
+          const pageIdx = i;
+          findWorkingRasterUrl(scene, entry, pageIdx, 0).then(url => {
+            if (cancelled || !url) return;
+            setPages(prev => prev.map((p, j) => (j === pageIdx ? { ...p, rasterUrl: url } : p)));
+          }).catch(() => {});
+        }
         setDone(true);
-        setCurrent(0);
-        setTimeout(() => setAutoPlay(true), 500);
+        if (!cancelled) setTimeout(() => setAutoPlay(true), 600);
       } catch (e) {
         console.error("Scrapbook:", e);
+        setGenError("Couldn't build this scrapbook. Using story text on each page.");
+        try {
+          const plan = buildFallbackScrapbookPlan(entry);
+          setAnalysis(plan.analysis || {});
+          setUsedFallbackPlan(true);
+          setPlanDone(true);
+          setGenStep(SB_TOTAL_STEPS);
+          const nextPages = [];
+          const fallbackPages = (plan.pages || []).slice(0, SCRAPBOOK_PAGE_COUNT);
+          let fbBundle = [null, null, null];
+          try {
+            fbBundle = await generateAllScrapbookSvgs(fallbackPages, entry, plan.analysis || {});
+          } catch (e) {
+            console.warn("Scrapbook bundle SVG (fallback plan):", e);
+          }
+          for (let idx = 0; idx < fallbackPages.length; idx++) {
+            const scene = fallbackPages[idx];
+            let svg = fbBundle[idx];
+            if (!svg) {
+              if (idx > 0) await new Promise(r => setTimeout(r, 400));
+              // eslint-disable-next-line no-await-in-loop
+              svg = await generateSceneSvgWithRetry(scene, entry, plan.analysis || {});
+            }
+            if (!svg) svg = buildFallbackSceneSvg(pal.bg, idx);
+            nextPages.push({
+              ...scene,
+              svg,
+              rasterUrl: null,
+              rasterNonce: 0,
+              noSvg: false,
+            });
+          }
+          setPages(nextPages);
+          setCurrent(0);
+          fallbackPages.forEach((scene, idx) => {
+            findWorkingRasterUrl(scene, entry, idx, 0).then(url => {
+              if (cancelled || !url) return;
+              setPages(prev => prev.map((p, j) => (j === idx ? { ...p, rasterUrl: url } : p)));
+            }).catch(() => {});
+          });
+        } catch (_) { /* noop */ }
         setDone(true);
       }
-    });
-    return () => cancelAnimationFrame(id);
+    })();
+    return () => { cancelled = true; };
   }, [entry.id]);
 
   useEffect(() => {
@@ -988,10 +1391,35 @@ function Scrapbook({ entry, onClose }) {
   }, [autoPlay, done, pages.length]);
 
   const goTo = i => { setCurrent(i); setAutoPlay(false); };
+  const retryPageImage = async index => {
+    const target = pages[index];
+    if (!target || retryingPage === index) return;
+    setRetryingPage(index);
+    try {
+      const attempt = Number(target.rasterNonce || 0) + 1;
+      const nextUrl = await findWorkingRasterUrl(target, entry, index, attempt);
+      setPages(prev => prev.map((p, i) => i === index ? {
+        ...p,
+        rasterNonce: attempt,
+        rasterUrl: nextUrl || p.rasterUrl || null,
+      } : p));
+    } finally {
+      setRetryingPage(null);
+    }
+  };
   const page = pages[current];
-  const emoKey = page?.visualDetails?.emotion ? String(page.visualDetails.emotion).toLowerCase() : "";
+  const emoKey = page?.emotion ? String(page.emotion).toLowerCase() : "";
   const emoColor = page ? (EMOTION_COLORS[emoKey] || pal.bg) : pal.bg;
-  const progressPct = done ? 100 : pages.length ? 85 : 40;
+  const progressPct = !planDone ? (genStep / SB_TOTAL_STEPS) * 35 : done ? 100 : 35 + (pages.length / SCRAPBOOK_PAGE_COUNT) * 65;
+
+  const analysisLine = analysis && typeof analysis === "object"
+    ? [
+        Array.isArray(analysis.people) && analysis.people.length ? `People: ${analysis.people.join(", ")}` : null,
+        analysis.setting ? `Setting: ${analysis.setting}` : null,
+        analysis.timePeriod ? `Time: ${analysis.timePeriod}` : null,
+        Array.isArray(analysis.keyObjects) && analysis.keyObjects.length ? `Objects: ${analysis.keyObjects.join(", ")}` : null,
+      ].filter(Boolean).join(" · ")
+    : "";
 
   return (
     <div className="sb-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -1005,14 +1433,14 @@ function Scrapbook({ entry, onClose }) {
           <button type="button" className="sb-close" onClick={onClose}>✕</button>
         </div>
 
-        {signalsLine && (
-          <div className="sb-analysis">{signalsLine}</div>
+        {analysisLine && (
+          <div className="sb-analysis">{analysisLine}</div>
         )}
-        <div className="sb-analysis" style={{background:"rgba(90,130,196,.06)",borderBottom:"1px solid var(--border)"}}>
-          {getSeedStoryScrapbookImageUrl(entry.id)
-            ? "Art is fixed for this archive story; captions are parsed from your text on-device."
-            : "Generated on your device from this story&apos;s text — no AI API calls."}
-        </div>
+        {usedFallbackPlan && planDone && (
+          <div className="sb-analysis" style={{background:"rgba(200,98,62,.06)",borderBottom:"1px solid var(--border)"}}>
+            Offline mode: moments are split from this story&apos;s text. Connect the Anthropic API for full AI illustration.
+          </div>
+        )}
 
         <div style={{height:2,background:"var(--border)",position:"relative"}}>
           <div style={{position:"absolute",left:0,top:0,height:"100%",background:pal.bg,
@@ -1023,12 +1451,11 @@ function Scrapbook({ entry, onClose }) {
           <div className="sb-generating">
             <div className="sb-gen-ring" style={{borderTopColor:pal.bg}}/>
             <div className="sb-gen-title" style={{fontStyle:"italic"}}>
-              Weaving {entry.person.split(" ")[0]}&apos;s story into five scenes…
+              {!planDone ? `Reading ${entry.person.split(" ")[0]}'s story…` : `Painting scene ${Math.min(Math.max(genStep - 3, 1), SCRAPBOOK_PAGE_COUNT)} of ${SCRAPBOOK_PAGE_COUNT}…`}
             </div>
             <div className="sb-gen-sub">
-              {getSeedStoryScrapbookImageUrl(entry.id)
-                ? "Loading story art and parsing five moments from the text…"
-                : "Parsing sentences, scoring moments, and painting canvas frames locally."}
+              {!planDone && "Extracting people, relationships, setting, objects, and emotions from this entry only…"}
+              {planDone && genStep >= 4 && "Illustrating each moment with story-specific details (Ghibli-inspired hand-painted look)…"}
             </div>
             <div className="sb-gen-steps">
               {SB_GEN_STEPS.map((s, i) => (
@@ -1038,6 +1465,7 @@ function Scrapbook({ entry, onClose }) {
                 </div>
               ))}
             </div>
+            {genError && <div style={{color:"var(--accent)",fontSize:12,marginTop:12,textAlign:"center",maxWidth:300}}>{genError}</div>}
           </div>
         ) : (
           <>
@@ -1045,53 +1473,93 @@ function Scrapbook({ entry, onClose }) {
               <div className="sb-pages" style={{transform:`translateX(-${current*100}%)`}}>
                 {pages.map((pg, i) => (
                   <div key={i} className="sb-page">
-                    <div className="sb-scene-art" style={{background:`linear-gradient(160deg,${pal.bg}12,#f5ede008)`}}>
-                      {pg.imageUrl ? (
-                        <img
-                          alt=""
-                          src={pg.imageUrl}
-                          style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}
+                    <div className="sb-scene-art" style={{background:`linear-gradient(160deg,${pal.bg}12,#f5ede008)`,position:"relative",overflow:"hidden"}}>
+                      {pg.svg && (
+                        <div
+                          className="sb-svg-layer"
+                          style={{position:"absolute",inset:0,zIndex:1,width:"100%",height:"100%"}}
+                          dangerouslySetInnerHTML={{__html: pg.svg}}
                         />
-                      ) : (
+                      )}
+                      {pg.rasterUrl && (
+                        <img
+                          src={pg.rasterUrl}
+                          alt=""
+                          loading="lazy"
+                          decoding="async"
+                          referrerPolicy="no-referrer"
+                          onError={() => setPages(prev => prev.map((p, j) => j === i ? { ...p, rasterUrl: null } : p))}
+                          style={{position:"absolute",inset:0,zIndex:2,width:"100%",height:"100%",objectFit:"cover",pointerEvents:"none"}}
+                        />
+                      )}
+                      {!pg.svg && !pg.rasterUrl && (
                         <div className="sb-scene-fallback">
                           <div className="sb-fallback-frame">
-                            <div className="sb-fallback-label">Scene</div>
-                            <p className="sb-fallback-details">{formatScrapbookVisualBlock(pg.visualDetails) || pg.caption}</p>
+                            <div className="sb-fallback-label">Memory scene (text)</div>
+                            <p className="sb-fallback-details">{pg.visualDetails || pg.imagePrompt || pg.caption}</p>
                           </div>
                         </div>
                       )}
                     </div>
                     <div className="sb-page-caption">
-                      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6,flexWrap:"wrap",gap:6}}>
+                      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
                         <span className="sb-page-num">Page {i+1} of {pages.length}</span>
-                        <span style={{fontSize:9,letterSpacing:".12em",textTransform:"uppercase",color:pal.bg}}>{pg.sceneType}</span>
-                        {pg.visualDetails?.emotion && (
+                        {pg.emotion && (
                           <span style={{
                             fontSize:9,letterSpacing:".1em",textTransform:"uppercase",
-                            color:EMOTION_COLORS[String(pg.visualDetails.emotion).toLowerCase()]||pal.bg,
-                            background:(EMOTION_COLORS[String(pg.visualDetails.emotion).toLowerCase()]||pal.bg)+"1a",
-                            border:`1px solid ${(EMOTION_COLORS[String(pg.visualDetails.emotion).toLowerCase()]||pal.bg)}35`,
+                            color:EMOTION_COLORS[String(pg.emotion).toLowerCase()]||pal.bg,
+                            background:(EMOTION_COLORS[String(pg.emotion).toLowerCase()]||pal.bg)+"1a",
+                            border:`1px solid ${(EMOTION_COLORS[String(pg.emotion).toLowerCase()]||pal.bg)}35`,
                             padding:"2px 8px",borderRadius:100
-                          }}>{pg.visualDetails.emotion}</span>
+                          }}>{pg.emotion}</span>
                         )}
                       </div>
                       <div className="sb-page-moment">{pg.sceneTitle}</div>
                       <div className="sb-page-detail">{pg.caption}</div>
-                      {formatScrapbookVisualBlock(pg.visualDetails) && (
-                        <div className="sb-page-visual">{formatScrapbookVisualBlock(pg.visualDetails)}</div>
+                      <div style={{marginTop:10,display:"flex",justifyContent:"flex-end"}}>
+                        <button
+                          type="button"
+                          className={`sb-auto-btn ${retryingPage===i?"playing":""}`}
+                          onClick={() => retryPageImage(i)}
+                          disabled={retryingPage===i}
+                          style={{padding:"5px 10px",border:"1px solid var(--border)",borderRadius:100}}
+                        >
+                          {retryingPage===i ? "Retrying image…" : "↻ Retry image"}
+                        </button>
+                      </div>
+                      {pg.visualDetails && (
+                        <div className="sb-page-visual">{pg.visualDetails}</div>
+                      )}
+                      {pg.imagePrompt && (
+                        <details className="sb-page-prompt">
+                          <summary>Scene direction (for illustration)</summary>
+                          <div className="sb-prompt-body">{pg.imagePrompt}</div>
+                        </details>
                       )}
                     </div>
                   </div>
                 ))}
+                {!done && (
+                  <div className="sb-page" style={{minWidth:"100%"}}>
+                    <div className="sb-scene-art" style={{background:"var(--surface2)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:12}}>
+                      <div className="sb-gen-ring" style={{borderTopColor:pal.bg}}/>
+                      <div style={{fontSize:12,color:"var(--muted)",fontStyle:"italic"}}>Painting scene {pages.length+1} of {SCRAPBOOK_PAGE_COUNT}…</div>
+                    </div>
+                    <div className="sb-page-caption">
+                      <div className="sb-page-num">Generating…</div>
+                      <div className="sb-page-moment" style={{color:"var(--muted)"}}>Scene {pages.length+1}</div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             <div className="sb-controls">
               <button type="button" className="sb-nav-btn" onClick={()=>goTo(Math.max(0,current-1))} disabled={current===0}>←</button>
               <div className="sb-dots">
-                {pages.map((_,i)=>(
+                {Array.from({length:Math.max(pages.length + (done?0:1), 1)}).map((_,i)=>(
                   <div key={i} className={`sb-dot ${i===current?"on":""}`}
-                    onClick={()=>goTo(i)}
-                    style={i===current?{background:emoColor}:{opacity:1}}/>
+                    onClick={()=>i<pages.length&&goTo(i)}
+                    style={i===current?{background:emoColor}:{opacity:i<pages.length?1:.25}}/>
                 ))}
               </div>
               <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -1103,7 +1571,7 @@ function Scrapbook({ entry, onClose }) {
                 )}
                 <button type="button" className="sb-nav-btn"
                   onClick={()=>goTo(Math.min(pages.length-1,current+1))}
-                  disabled={current>=pages.length-1}>→</button>
+                  disabled={current>=pages.length-1&&done}>→</button>
               </div>
             </div>
           </>
@@ -1116,13 +1584,15 @@ function Scrapbook({ entry, onClose }) {
 
 
 // ── Story Modal ───────────────────────────────────────────────────────────────
-function StoryModal({ entry, entries, likes, onLike, onClose, onShareInChat, onOpenRelated }) {
+function StoryModal({ entry, entries, likes, onLike, onClose, onDelete, onTogglePrivate, onShareInChat, onOpenRelated }) {
   if(!entry) return null;
   const pal=PALETTES[entry.p%PALETTES.length];
   const liked=likes[entry.id];
   const total=(entry.likes||0)+(liked?1:0);
   const related=entries.filter(e=>e.id!==entry.id&&e.themes.some(t=>entry.themes.includes(t))).slice(0,4);
   const [showScrapbook, setShowScrapbook] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmPublic, setConfirmPublic] = useState(false);
   // SVG pattern for hero
   const pat=`<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40'><circle cx='20' cy='20' r='1.5' fill='${pal.bg}'/><circle cx='0' cy='0' r='1' fill='${pal.bg}'/><circle cx='40' cy='40' r='1' fill='${pal.bg}'/></svg>`;
   return (
@@ -1135,7 +1605,10 @@ function StoryModal({ entry, entries, likes, onLike, onClose, onShareInChat, onO
           <div className="smhero-ov"/>
           <button className="sm-close" onClick={onClose}>✕</button>
           <div className="smhero-content">
-            <span className="sm-chip" style={{background:pal.bg+"14",color:pal.bg,border:`1px solid ${pal.bg}30`}}>{entry.emoji} {entry.type}</span>
+            <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+              <span className="sm-chip" style={{background:pal.bg+"14",color:pal.bg,border:`1px solid ${pal.bg}30`}}>{entry.emoji} {entry.type}</span>
+              {entry.isPrivate&&<span className="sm-private-badge">🔒 Private</span>}
+            </div>
             <h2 className="sm-title">{entry.title}</h2>
             <div className="sm-meta">{entry.person} · {entry.place} · {entry.culture}</div>
           </div>
@@ -1147,7 +1620,27 @@ function StoryModal({ entry, entries, likes, onLike, onClose, onShareInChat, onO
           <button className="sm-act-btn" style={{background:"#f5f0e8",border:"1px solid #e0d8cc",color:"#3a3530",fontWeight:500}} onClick={() => setShowScrapbook(true)}>✦ AI Scrapbook</button>
           <button className="sm-act-btn" onClick={()=>{onShareInChat(entry);onClose();}}>💬 Community</button>
           <button className="sm-act-btn" onClick={()=>navigator.clipboard?.writeText(entry.quote)}>📋 Quote</button>
+          {onTogglePrivate && <button className="sm-act-btn" onClick={()=>entry.isPrivate ? setConfirmPublic(true) : onTogglePrivate(entry.id)}>{entry.isPrivate ? "🔓 Make Public" : "🔒 Make Private"}</button>}
+          {onDelete && <button className="sm-act-btn sm-delete-btn" onClick={()=>setConfirmDelete(true)}>🗑 Delete</button>}
         </div>
+        {confirmDelete && (
+          <div className="sm-confirm-delete">
+            <p className="sm-confirm-text">Permanently delete <strong>"{entry.title}"</strong>? This cannot be undone.</p>
+            <div className="sm-confirm-btns">
+              <button className="sm-confirm-cancel" onClick={()=>setConfirmDelete(false)}>Cancel</button>
+              <button className="sm-confirm-go" onClick={()=>{onDelete(entry.id);onClose();}}>Yes, delete</button>
+            </div>
+          </div>
+        )}
+        {confirmPublic && (
+          <div className="sm-confirm-delete" style={{background:"#f8fbf8",borderColor:"#b8d8b8"}}>
+            <p className="sm-confirm-text">Make <strong>"{entry.title}"</strong> visible to everyone in the archive?</p>
+            <div className="sm-confirm-btns">
+              <button className="sm-confirm-cancel" onClick={()=>setConfirmPublic(false)}>Cancel</button>
+              <button className="sm-confirm-go" style={{background:"#3a7a50",borderColor:"#b8d8b8"}} onClick={()=>{onTogglePrivate(entry.id);setConfirmPublic(false);}}>Yes, make public</button>
+            </div>
+          </div>
+        )}
         <div className="smbody">
           {entry.videoUrl && (
             <>
@@ -1190,7 +1683,7 @@ const MIN_STORY_CHARS = 30;
 
 // ── Add Modal ─────────────────────────────────────────────────────────────────
 function AddModal({ onClose, onSubmit }) {
-  const [f,setF]=useState({name:"",culture:"",place:"",type:"Family Memory",story:""});
+  const [f,setF]=useState({name:"",culture:"",place:"",type:"Family Memory",story:"",title:"",isPrivate:false});
   const [videoPreviewUrl, setVideoPreviewUrl] = useState(null);
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
 
@@ -1259,11 +1752,21 @@ function AddModal({ onClose, onSubmit }) {
             <div className="afield"><label className="alabel">Culture / Heritage</label><input className="ainput" value={f.culture} onChange={e=>s("culture",e.target.value)} placeholder="e.g. Sichuan Chinese"/></div>
             <div className="afield"><label className="alabel">Place</label><input className="ainput" value={f.place} onChange={e=>s("place",e.target.value)} placeholder="e.g. Lahore → London"/></div>
           </div>
+          <div className="afield"><label className="alabel">Title <span style={{fontWeight:400,color:"var(--muted)"}}>— optional</span></label><input className="ainput" value={f.title} onChange={e=>s("title",e.target.value)} placeholder="e.g. The Last Recipe, A Train Across the Border…"/></div>
           <div className="afield"><label className="alabel">The Story *</label><textarea className="atextarea" value={f.story} onChange={e=>s("story",e.target.value)} placeholder="Write it exactly as you remember it. Raw is beautiful. There is no wrong way to tell a true story..."/>
             <div className="astory-meta">
               <span className="alabel" style={{margin:0}}>Name + story required</span>
-              <span className={`astory-count ${storyLen < MIN_STORY_CHARS ? "warn" : ""}`}>{storyLen} / {MIN_STORY_CHARS} characters</span>
+              <span className={`astory-count ${storyLen < MIN_STORY_CHARS ? "warn" : ""}`}>{storyLen < MIN_STORY_CHARS ? `${storyLen} / ${MIN_STORY_CHARS} character minimum` : `${storyLen} characters`}</span>
             </div>
+          </div>
+          <div className="afield">
+            <label className="aprivate-toggle" onClick={()=>s("isPrivate",!f.isPrivate)}>
+              <div className={`aprivate-switch ${f.isPrivate?"on":""}`}><div className="aprivate-knob"/></div>
+              <div>
+                <div className="alabel" style={{margin:0,cursor:"pointer"}}>Make this story private</div>
+                <div style={{fontSize:11,color:"var(--muted)",marginTop:2}}>{f.isPrivate ? "Only you can see this story — it won't appear in the shared archive." : "This story will be visible to everyone in the archive."}</div>
+              </div>
+            </label>
           </div>
           <div className="afield">
             <label className="alabel">Preserve a video (optional)</label>
@@ -1516,7 +2019,9 @@ export default function App() {
       const entry={
         ...parsed,id:Date.now(),p:idx,likes:0,person:form.name,place:form.place||"Unknown",culture:form.culture||"Unknown",type:form.type,
         x:8+Math.random()*74,y:15+Math.random()*62,size:100+Math.floor(Math.random()*26),lat,lng,
+        ...(form.title?.trim() ? { title: form.title.trim(), label: form.title.trim().length > 32 ? form.title.trim().slice(0, 29) + "…" : form.title.trim() } : {}),
         ...(form.videoUrl ? { videoUrl: form.videoUrl } : {}),
+        ...(form.isPrivate ? { isPrivate: true } : {}),
       };
       await new Promise(r=>setTimeout(r,500));
       setEntries(e=>[...e,entry]);
@@ -1527,7 +2032,10 @@ export default function App() {
         setChatUnlocked(true);
         const name=form.name.split(" ")[0];
         setMyName(name);setMyColor(PALETTES[idx].bg);
-        setMsgs(m=>[...m,{id:Date.now(),author:name,color:PALETTES[idx].bg,text:`Just shared "${parsed.label}" — glad to be here.`,time:new Date(),storyRef:{label:parsed.label,id:entry.id}}]);
+        const chatText = form.isPrivate ? "Just preserved a private story — glad to be here." : `Just shared "${parsed.label}" — glad to be here.`;
+        const chatMsg = {id:Date.now(),author:name,color:PALETTES[idx].bg,text:chatText,time:new Date()};
+        if (!form.isPrivate) chatMsg.storyRef = {label:parsed.label,id:entry.id};
+        setMsgs(m=>[...m,chatMsg]);
         setChatOpen(true);
       }
       showToast("Story preserved and added to the archive ✦");
@@ -1604,7 +2112,7 @@ export default function App() {
           </button>
           <button className="btn" onClick={pickRandom}>🎲 Random</button>
           <button className="btn primary" onClick={()=>setShowAdd(true)}>+ Preserve</button>
-          <button className="btn chat-toggle" onClick={openChat}>
+          <button className="btn chat-toggle" onClick={()=>{chatOpen?setChatOpen(false):openChat();}}>
             💬 Community
             {newMsgCount>0&&!chatOpen&&<span className="chat-badge">{newMsgCount>9?"9+":newMsgCount}</span>}
           </button>
@@ -1712,6 +2220,8 @@ export default function App() {
 
       {selected&&<StoryModal entry={selected} entries={entries} likes={likes}
         onLike={handleLike} onClose={()=>setSelected(null)}
+        onDelete={id=>{setEntries(es=>es.filter(e=>e.id!==id));setSelected(null);}}
+        onTogglePrivate={id=>{setEntries(es=>es.map(e=>e.id===id?{...e,isPrivate:!e.isPrivate}:e));setSelected(s=>s&&s.id===id?{...s,isPrivate:!s.isPrivate}:s);}}
         onShareInChat={shareInChat} onOpenRelated={e=>setSelected(e)}/>}
       {showAdd&&<AddModal onClose={()=>setShowAdd(false)} onSubmit={handleSubmit}/>}
       {loading&&<LoadModal step={loadStep}/>}
