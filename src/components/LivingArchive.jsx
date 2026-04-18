@@ -15,15 +15,21 @@ ${FONTS}
   --chat-w:320px;--accent:#c8623e;
   --canvas-bottom:28px;
 }
-html,body{height:100%;overflow:hidden;cursor:default}
-body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink)}
+html{min-height:100%}
+html,body{min-height:100%;overflow-x:hidden;overflow-y:auto;cursor:default}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);padding-bottom:28px}
 body.geo-map-on{background:linear-gradient(165deg,#ebe4d8 0%,#e5ddd2 45%,#ddd4c8 100%)}
 
-/* CANVAS (full sky; ticker strip at bottom) */
-.canvas{position:fixed;top:0;left:0;right:0;bottom:var(--canvas-bottom);overflow:hidden;z-index:1}
+/* First viewport: sky or map (scrolls up; mission follows in document flow) */
+.hero-shell{position:relative;width:100%;min-height:calc(100dvh - 28px);isolation:isolate}
+.hero-shell--sky{background:transparent}
+.hero-shell--geo{background:transparent}
+
+/* CANVAS — absolute within sky hero */
+.hero-shell--sky .canvas{position:absolute;inset:0;overflow:hidden;z-index:1}
 
 /* PARTICLE CANVAS */
-.particle-canvas{position:fixed;top:0;left:0;right:0;bottom:var(--canvas-bottom);pointer-events:none;z-index:0}
+.hero-shell--sky .particle-canvas{position:absolute;inset:0;pointer-events:none;z-index:0}
 
 /* AMBIENT TICKER */
 .ticker{position:fixed;bottom:0;left:0;right:0;z-index:8;overflow:hidden;height:28px;pointer-events:none;border-top:1px solid var(--border)}
@@ -33,7 +39,7 @@ body.geo-map-on{background:linear-gradient(165deg,#ebe4d8 0%,#e5ddd2 45%,#ddd4c8
 @keyframes ticker-scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 
 /* CENTER TITLE */
-.center-title{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:5;text-align:center;pointer-events:none;user-select:none;transition:left .5s cubic-bezier(.16,1,.3,1)}
+.hero-shell--sky .center-title{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:5;text-align:center;pointer-events:none;user-select:none;transition:left .5s cubic-bezier(.16,1,.3,1)}
 .center-title.shifted{left:calc(50% - 160px)}
 .center-title h1{font-family:'Playfair Display',serif;font-size:clamp(52px,7vw,90px);font-weight:700;color:var(--ink);line-height:1;letter-spacing:-.02em;opacity:.45;animation:title-breathe 8s ease-in-out infinite}
 @keyframes title-breathe{0%,100%{opacity:.45}50%{opacity:.38}}
@@ -94,17 +100,13 @@ body.geo-map-on{background:linear-gradient(165deg,#ebe4d8 0%,#e5ddd2 45%,#ddd4c8
 @keyframes burst-fly{0%{transform:translate(0,0) scale(1);opacity:1}100%{transform:translate(var(--tx),var(--ty)) scale(0);opacity:0}}
 
 /* FLOAT QUOTE */
-.float-quotes{position:fixed;top:0;left:0;right:0;bottom:var(--canvas-bottom);pointer-events:none;z-index:6;overflow:hidden}
+.hero-shell--sky .float-quotes{position:absolute;inset:0;pointer-events:none;z-index:6;overflow:hidden}
 
-body.geo-map-on .canvas,
-body.geo-map-on .particle-canvas,
-body.geo-map-on .float-quotes,
-body.geo-map-on .conn,
-body.geo-map-on .center-title{display:none!important}
+.geo-map-stage{position:absolute;inset:0;min-height:360px}
 
 /* STORY MAP (full view) — warm parchment over muted tiles */
 .map-shell{display:none}
-.map-shell.map-shell--geo{display:block;position:fixed;inset:0 0 28px 0;height:auto;z-index:4;background:linear-gradient(180deg,#f2ebe2 0%,#e8dfd4 55%,#e0d6ca 100%);border-top:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}
+.map-shell.map-shell--geo{display:block;position:absolute;inset:0;height:100%;background:linear-gradient(180deg,#f2ebe2 0%,#e8dfd4 55%,#e0d6ca 100%);border-top:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}
 .map-shell.map-shell--geo::after{
   content:'';position:absolute;inset:0;pointer-events:none;z-index:450;
   box-shadow:inset 0 0 100px 24px rgba(245,240,232,.25),inset 0 0 200px 80px rgba(200,98,62,.04);
@@ -153,6 +155,19 @@ body.geo-map-on .center-title{display:none!important}
 .map-shell .leaflet-bar a{border-bottom-color:var(--border)}
 .map-shell .leaflet-bar a:first-child{border-radius:12px 12px 0 0}
 .map-shell .leaflet-bar a:last-child{border-radius:0 0 12px 12px;border-bottom:none}
+
+.mission-panel{
+  position:relative;z-index:1;scroll-margin-top:56px;
+  background:linear-gradient(180deg,var(--bg) 0%,var(--surface) 55%,var(--surface2) 100%);
+  border-top:1px solid var(--border);
+  padding:clamp(32px,5vw,52px) clamp(20px,4vw,36px) clamp(44px,7vw,72px);
+  box-shadow:0 -16px 48px rgba(15,13,10,.04);
+}
+.mission-inner{max-width:38rem;margin:0 auto}
+.mission-kicker{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:500;margin-bottom:10px}
+.mission-title{font-family:'Playfair Display',serif;font-size:clamp(22px,3.2vw,30px);font-weight:700;color:var(--ink);line-height:1.2;margin-bottom:14px}
+.mission-body{font-size:15px;line-height:1.78;font-weight:300;color:var(--ink2);margin-bottom:1.15em}
+.mission-body:last-of-type{margin-bottom:0}
 .fquote{position:absolute;font-family:'Playfair Display',serif;font-style:italic;color:var(--ink2);opacity:0;max-width:200px;line-height:1.5;animation:fquote-float var(--dur) ease-in-out forwards;text-align:center;letter-spacing:.01em;pointer-events:none}
 @keyframes fquote-float{0%{opacity:0;transform:translateY(8px)}15%{opacity:.13}75%{opacity:.09}100%{opacity:0;transform:translateY(-60px)}}
 
@@ -164,11 +179,11 @@ body.geo-map-on .center-title{display:none!important}
 .tooltip-meta{font-size:10px;opacity:.45;margin-top:6px}
 .tooltip-hint{font-size:10px;opacity:.4;margin-top:4px;text-align:right}
 
-/* CONNECTIONS */
-.conn{position:fixed;top:0;left:0;right:0;bottom:var(--canvas-bottom);pointer-events:none;z-index:2}
+/* CONNECTIONS (inside .canvas) */
+.hero-shell--sky .conn{position:absolute;inset:0;pointer-events:none;z-index:2}
 
-/* STATS */
-.stats-bar{position:fixed;bottom:calc(var(--canvas-bottom) + 10px);left:20px;z-index:10;display:flex;flex-direction:column;gap:5px;pointer-events:none}
+/* STATS + HINT — anchored to hero so they scroll away with the first screen */
+.hero-shell .stats-bar{position:absolute;bottom:18px;left:20px;z-index:10;display:flex;flex-direction:column;gap:5px;pointer-events:none}
 .stat-pill{display:flex;align-items:center;gap:6px;background:rgba(245,240,232,.9);border:1px solid var(--border);border-radius:100px;padding:4px 11px;backdrop-filter:blur(12px)}
 .stat-dot{width:5px;height:5px;border-radius:50%;background:var(--accent);animation:pip 2s ease-in-out infinite}
 .stat-text{font-size:10px;color:var(--ink2);font-weight:500}
@@ -177,7 +192,7 @@ body.geo-map-on .center-title{display:none!important}
 @keyframes num-bump{0%{transform:scale(1)}50%{transform:scale(1.3)}100%{transform:scale(1)}}
 
 /* HINT */
-.hint{position:fixed;bottom:calc(var(--canvas-bottom) + 10px);right:20px;z-index:10;pointer-events:none;animation:hint-up .8s .8s ease both;opacity:0}
+.hero-shell .hint{position:absolute;bottom:18px;right:20px;z-index:10;pointer-events:none;animation:hint-up .8s .8s ease both;opacity:0}
 @keyframes hint-up{to{opacity:1}from{opacity:0;transform:translateY(6px)}}
 .hint p{font-family:'Playfair Display',serif;font-style:italic;font-size:11px;color:var(--muted);text-align:right;line-height:1.6}
 
@@ -2102,35 +2117,30 @@ export default function App() {
     </span>
   ));
 
+  const missionSection=(
+    <section className="mission-panel" aria-labelledby="mission-title">
+      <div className="mission-inner">
+        <p className="mission-kicker">Creative flourishing</p>
+        <h2 id="mission-title" className="mission-title">Why Living Archive Exists</h2>
+        <p className="mission-body">
+          Living Archive exists to preserve cultural memory as a shared act. Technology supports the storyteller. It never replaces them.
+        </p>
+        <p className="mission-body">
+          Many of the rituals, stories, and languages that define families and communities are quietly fading. At the same time, the tools we use every day, especially AI and digital platforms, often accelerate distraction, shorten attention spans, and flatten meaning. What should help us remember can instead make it easier to forget.
+        </p>
+        <p className="mission-body">
+          Living Archive is built to reverse that pattern. It uses technology intentionally, not to replace memory but to deepen it. By creating a space designed for reflection, context, and continuity, it helps people slow down, record what matters, and return to it over time. Stories are not treated as disposable content but as living threads that connect people across generations.
+        </p>
+        <p className="mission-body">
+          We believe preservation depends on connection. When memory is shared and revisited across families, communities, and time, it becomes more meaningful and easier to sustain. Living Archive makes these connections visible and accessible, turning technology into a tool for attention, understanding, and belonging rather than distraction.
+        </p>
+      </div>
+    </section>
+  );
+
   return (
     <>
       <style>{CSS}</style>
-      <ParticleCanvas/>
-      <FloatQuotes entries={entries}/>
-
-      <div className={`center-title ${chatOpen?"shifted":""}`}>
-        <h1>Living Archive</h1>
-        <p>Every bubble is a story. Every story, a life.</p>
-        <div><span className="live-tag"><span className="live-pip"/>Live · {entries.length} stories</span></div>
-      </div>
-
-      <div className="canvas">
-        <Connections entries={entries} bubbleRefs={bubbleRefs}/>
-        {entries.map((e,i)=>{
-          const dimmed=(filter!==null&&!e.themes.includes(filter))||(search.trim().length>1&&!searchResults.find(r=>r.id===e.id));
-          return (
-            <div key={e.id} ref={refCallback(e.id)} style={{position:"absolute",left:0,top:0}}>
-              <Bubble entry={e} onClick={setSelected}
-                onHover={(entry,ev)=>setTooltip(entry?{entry,pos:{x:ev.clientX,y:ev.clientY}}:{entry:null,pos:null})}
-                dimmed={dimmed} index={i} chatOpen={chatOpen} bottomPad={canvasBottomPad}/>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Burst effects */}
-      {bursts.map(b=><Burst key={b.id} x={b.x} y={b.y} color={b.color} onDone={()=>setBursts(bs=>bs.filter(bx=>bx.id!==b.id))}/>)}
-
       <nav className="nav">
         <div className="nav-left">
           <div className="nav-pip"/>
@@ -2176,42 +2186,71 @@ export default function App() {
         </div>
       )}
 
-      <div className="stats-bar">
-        <div className="stat-pill">
-          <div className="stat-dot"/>
-          <span className="stat-text">Hearts</span>
-          <span className={`stat-num ${heartsBumped?"bump":""}`}>{totalHearts.toLocaleString()}</span>
-        </div>
-        <div className="stat-pill">
-          <div className="stat-dot" style={{background:"#1e3e7a"}}/>
-          <span className="stat-text">Stories</span>
-          <span className="stat-num">{entries.length}</span>
-        </div>
-        <div className="stat-pill">
-          <div className="stat-dot" style={{background:"#1a5e38"}}/>
-          <span className="stat-text">Online</span>
-          <span className="stat-num">{MEMBERS.filter(m=>m.online).length}</span>
-        </div>
-      </div>
-
-      <div className="hint">
-        {geoMapView?(
+      <div className={`hero-shell ${geoMapView?"hero-shell--geo":"hero-shell--sky"}`}>
+        {!geoMapView?(
           <>
-            <p>Drag to pan · Scroll to zoom</p>
-            <p>Click a bubble to read its story</p>
+            <ParticleCanvas/>
+            <FloatQuotes entries={entries}/>
+            <div className={`center-title ${chatOpen?"shifted":""}`}>
+              <h1>Living Archive</h1>
+              <p>Every bubble is a story. Every story, a life.</p>
+              <div><span className="live-tag"><span className="live-pip"/>Live · {entries.length} stories</span></div>
+            </div>
+            <div className="canvas">
+              <Connections entries={entries} bubbleRefs={bubbleRefs}/>
+              {entries.map((e,i)=>{
+                const dimmed=(filter!==null&&!e.themes.includes(filter))||(search.trim().length>1&&!searchResults.find(r=>r.id===e.id));
+                return (
+                  <div key={e.id} ref={refCallback(e.id)} style={{position:"absolute",left:0,top:0}}>
+                    <Bubble entry={e} onClick={setSelected}
+                      onHover={(entry,ev)=>setTooltip(entry?{entry,pos:{x:ev.clientX,y:ev.clientY}}:{entry:null,pos:null})}
+                      dimmed={dimmed} index={i} chatOpen={chatOpen} bottomPad={canvasBottomPad}/>
+                  </div>
+                );
+              })}
+            </div>
           </>
         ):(
-          <>
-            <p>Hover to preview · Click to read</p>
-            <p>Move mouse to push bubbles · Map shows where stories belong</p>
-          </>
+          <div className="geo-map-stage">
+            <StoryMap entries={entries} filter={filter} search={search} searchResults={searchResults}
+              onPick={setSelected} chatOpen={chatOpen}/>
+          </div>
         )}
+        <div className="stats-bar">
+          <div className="stat-pill">
+            <div className="stat-dot"/>
+            <span className="stat-text">Hearts</span>
+            <span className={`stat-num ${heartsBumped?"bump":""}`}>{totalHearts.toLocaleString()}</span>
+          </div>
+          <div className="stat-pill">
+            <div className="stat-dot" style={{background:"#1e3e7a"}}/>
+            <span className="stat-text">Stories</span>
+            <span className="stat-num">{entries.length}</span>
+          </div>
+          <div className="stat-pill">
+            <div className="stat-dot" style={{background:"#1a5e38"}}/>
+            <span className="stat-text">Online</span>
+            <span className="stat-num">{MEMBERS.filter(m=>m.online).length}</span>
+          </div>
+        </div>
+        <div className="hint">
+          {geoMapView?(
+            <>
+              <p>Drag to pan · Scroll wheel zooms the map</p>
+              <p>Scroll down for our mission · Click a bubble to read</p>
+            </>
+          ):(
+            <>
+              <p>Hover to preview · Click to read</p>
+              <p>Move mouse to push bubbles · Scroll down for our mission</p>
+            </>
+          )}
+        </div>
       </div>
 
-      {geoMapView&&(
-        <StoryMap entries={entries} filter={filter} search={search} searchResults={searchResults}
-          onPick={setSelected} chatOpen={chatOpen}/>
-      )}
+      {missionSection}
+
+      {bursts.map(b=><Burst key={b.id} x={b.x} y={b.y} color={b.color} onDone={()=>setBursts(bs=>bs.filter(bx=>bx.id!==b.id))}/>)}
 
       <Tooltip entry={tooltip.entry} pos={tooltip.pos}/>
 
