@@ -278,6 +278,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink)}
 .sb-page{min-width:100%;display:flex;flex-direction:column}
 .sb-scene-art{width:100%;height:260px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
 .sb-scene-art svg{width:100%;height:100%}
+.sb-svg-layer svg{display:block;width:100%;height:100%;object-fit:cover}
 .sb-scene-fallback{width:100%;height:100%;min-height:260px;display:flex;align-items:center;justify-content:center;padding:20px 22px;background:linear-gradient(165deg,rgba(245,237,224,.95) 0%,rgba(232,216,192,.88) 45%,rgba(200,98,62,.08) 100%);border-bottom:1px solid var(--border2)}
 .sb-fallback-frame{width:100%;max-width:340px;border-radius:12px;border:1px solid rgba(58,53,48,.12);background:rgba(250,247,242,.65);padding:16px 18px;box-shadow:inset 0 1px 0 rgba(255,255,255,.5)}
 .sb-fallback-label{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
@@ -681,7 +682,9 @@ function Tooltip({ entry, pos }) {
   );
 }
 
-// ── Scrapbook AI (story → analysis + 5 pages → SVG per page) ─────────────────
+// ── Scrapbook AI (story → analysis + N pages → image + SVG per page) ──────────
+const SCRAPBOOK_PAGE_COUNT = 3;
+
 async function callClaude(prompt, maxTokens = 2000) {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -716,26 +719,26 @@ function parseJsonRobust(raw) {
   }
 }
 
-/** Heuristic 5-page plan from story text when the API is unavailable — still story-specific, no fake SVG. */
+/** Heuristic plan when the API is unavailable — still story-specific. */
 function buildFallbackScrapbookPlan(entry) {
+  const n = SCRAPBOOK_PAGE_COUNT;
   const story = (entry.story || "").trim();
   const paras = story.split(/\n\n+/).map(p => p.trim()).filter(Boolean);
   let chunks = [];
-  if (paras.length >= 5) {
-    const pick = [0, 1, 2, 3, 4];
-    if (paras.length > 5) {
-      const step = (paras.length - 1) / 4;
-      pick[1] = Math.round(step);
-      pick[2] = Math.round(step * 2);
-      pick[3] = Math.round(step * 3);
-      pick[4] = paras.length - 1;
+  if (paras.length >= n) {
+    const pick = [];
+    for (let k = 0; k < n; k++) {
+      if (paras.length === n) pick.push(k);
+      else if (k === 0) pick.push(0);
+      else if (k === n - 1) pick.push(paras.length - 1);
+      else pick.push(Math.round(((k / (n - 1)) * (paras.length - 1))));
     }
     chunks = pick.map(i => paras[Math.min(i, paras.length - 1)]);
   } else {
     const sentences = story.split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(s => s.length > 12);
-    for (let i = 0; i < 5; i++) {
-      const idx = sentences.length >= 5
-        ? Math.floor((i / 4) * (sentences.length - 1))
+    for (let i = 0; i < n; i++) {
+      const idx = sentences.length >= n
+        ? Math.floor((i / Math.max(1, n - 1)) * (sentences.length - 1))
         : Math.min(i, Math.max(0, sentences.length - 1));
       chunks.push(sentences[idx] || story.slice(i * 120, (i + 1) * 120) || story);
     }
@@ -768,7 +771,8 @@ function buildFallbackScrapbookPlan(entry) {
 }
 
 async function buildScrapbookPlan(entry) {
-  const prompt = `You are designing a deeply personalized 5-page memory scrapbook for ONE archive entry. The scrapbook must be grounded ONLY in the story text below — not generic cultural filler.
+  const n = SCRAPBOOK_PAGE_COUNT;
+  const prompt = `You are designing a deeply personalized ${n}-page memory scrapbook for ONE archive entry. The scrapbook must be grounded ONLY in the story text below — not generic cultural filler.
 
 ARCHIVE METADATA:
 - Title: ${entry.title}
@@ -791,12 +795,12 @@ STEP 1 — Extract from THIS story only:
 - emotions: string[] (emotions named or clearly implied)
 - keyEvents: string[] (short phrases for what happens, in narrative order where possible)
 
-STEP 2 — Create exactly 5 scrapbook pages. Each page = one real moment from the story (chronological through the narrative OR an emotionally meaningful order that still maps to real events in the text). Do not invent major events not supported by the story.
+STEP 2 — Create exactly ${n} scrapbook pages (not more, not fewer). Each page = one real moment from the story (chronological through the narrative OR an emotionally meaningful order that still maps to real events in the text). Do not invent major events not supported by the story.
 
 For EACH page output:
 - sceneTitle: specific to this story (not generic like "family together")
 - caption: one warm sentence, max ~24 words, names/objects from the story when possible
-- imagePrompt: 5–8 sentences. Highly specific: WHO (roles/names), clothing/age if inferable, WHERE, WHAT is happening, KEY OBJECTS, lighting, weather, emotional atmosphere. Style: wholesome, nostalgic, hand-painted, Studio Ghibli–inspired, soft diffused natural light, warm earth and botanical palette, expressive faces, cinematic storybook composition — but the SUBJECT must be literal from the story above.
+- imagePrompt: 3–5 sentences. Highly specific: WHO (roles/names), clothing/age if inferable, WHERE, WHAT is happening, KEY OBJECTS, lighting, weather, emotional atmosphere. Style: wholesome, nostalgic, hand-painted, Studio Ghibli–inspired, soft diffused natural light, warm earth and botanical palette, expressive faces, cinematic storybook composition — but the SUBJECT must be literal from the story above.
 - visualDetails: 2–4 sentences on layout: foreground / midground / background, key props, palette, focal emotion
 - emotion: one of: warmth, joy, grief, wonder, longing, pride, tenderness, resilience, love, nostalgia, hope, bittersweet
 
@@ -810,8 +814,8 @@ Return ONLY valid JSON (no markdown):
   if (!parsed.pages || !Array.isArray(parsed.pages) || parsed.pages.length < 1) {
     throw new Error("Invalid scrapbook plan");
   }
-  const pages = parsed.pages.slice(0, 5);
-  while (pages.length < 5) {
+  const pages = parsed.pages.slice(0, n);
+  while (pages.length < n) {
     pages.push({
       sceneTitle: `Reflection ${pages.length + 1}`,
       caption: entry.quote || entry.title,
@@ -820,7 +824,7 @@ Return ONLY valid JSON (no markdown):
       emotion: "nostalgia",
     });
   }
-  return { analysis: parsed.analysis || {}, pages: pages.slice(0, 5), fallback: false };
+  return { analysis: parsed.analysis || {}, pages: pages.slice(0, n), fallback: false };
 }
 
 async function generateSceneSVG(scene, entry, analysis) {
@@ -851,7 +855,7 @@ SVG RULES:
 - viewBox="0 0 400 280" xmlns="http://www.w3.org/2000/svg"
 - Use <defs> with at least one soft radialGradient for atmosphere
 - Three layers: background (setting), midground (figures/action), foreground (key objects)
-- At least 28 distinct elements using path, ellipse, rect, circle, polygon, line as needed
+- At least 12 distinct elements using path, ellipse, rect, circle, polygon, line as needed
 - Show concrete props from the prompt (food, lantern, train, water, buildings, instruments, etc.) when mentioned
 - NO text, letters, or captions inside the SVG
 
@@ -860,16 +864,171 @@ Return ONLY the raw <svg>...</svg> element. No markdown or explanation.`, 4500);
   return svgMatch ? svgMatch[0] : raw.includes("<svg") ? raw : null;
 }
 
+/** One API call for all scrapbook panels — avoids per-page rate limits so every story gets real art. */
+async function generateAllScrapbookSvgs(scenes, entry, analysis) {
+  const analysisStr = typeof analysis === "object" && analysis
+    ? JSON.stringify(analysis, null, 0).slice(0, 1200)
+    : String(analysis || "");
+  const blocks = scenes.map((scene, idx) => {
+    const ip = String(scene.imagePrompt || "").slice(0, 800);
+    const vd = String(scene.visualDetails || "").slice(0, 350);
+    return `SCENE ${idx + 1}:
+- sceneTitle: ${scene.sceneTitle}
+- caption: ${scene.caption}
+- emotion: ${scene.emotion || "nostalgia"}
+- visualDetails: ${vd}
+- illustrate (from this story): ${ip}`;
+  }).join("\n\n");
+
+  const raw = await callClaude(`You are an illustrator. Output EXACTLY THREE complete SVG files — one for SCENE 1, one for SCENE 2, one for SCENE 3 — in that order. Each must depict that SPECIFIC moment (not a generic village or anonymous figures).
+
+ARCHIVE: ${entry.person} · ${entry.culture} · ${entry.place}
+TITLE: ${entry.title}
+
+STORY ANALYSIS (consistency): ${analysisStr}
+
+${blocks}
+
+VISUAL STYLE (all three):
+- Wholesome, nostalgic, hand-painted, Studio Ghibli–inspired
+- Soft natural / golden-hour light, warm greens, terracotta, cream, sky blues
+- Expressive simple shapes; storybook composition
+
+EACH SVG MUST:
+- Use viewBox="0 0 400 280" and xmlns="http://www.w3.org/2000/svg"
+- Include <defs> with at least one soft radialGradient
+- At least 10 distinct elements (path, ellipse, rect, circle, polygon, line, etc.)
+- Show concrete props from that scene when possible (food, water, buildings, instruments, etc.)
+- NO text, letters, or captions inside any SVG
+
+OUTPUT: Output only the three raw <svg>...</svg> elements in order (scene 1, then 2, then 3). Put a single blank line between SVGs. No markdown fences. No commentary.`, 8192);
+  const matches = raw.match(/<svg[\s\S]*?<\/svg>/gi);
+  if (!matches || matches.length === 0) {
+    return [null, null, null];
+  }
+  const out = [null, null, null];
+  for (let i = 0; i < 3; i++) {
+    out[i] = matches[i] || null;
+  }
+  return out;
+}
+
+async function generateSceneSvgWithRetry(scene, entry, analysis) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const svg = await generateSceneSVG(scene, entry, analysis);
+      if (svg) return svg;
+    } catch (e) {
+      console.warn("Scrapbook SVG attempt", attempt + 1, e);
+    }
+    if (attempt < 1) await new Promise(r => setTimeout(r, 600));
+  }
+  return null;
+}
+
+/** Decorative placeholder so every page always has art if Claude fails or rate-limits. */
+function buildFallbackSceneSvg(accentHex, pageIndex) {
+  const gid = `sbfg${pageIndex}`;
+  const c = accentHex || "#c8623e";
+  return `<svg viewBox="0 0 400 280" xmlns="http://www.w3.org/2000/svg"><defs><radialGradient id="${gid}"><stop offset="0%" stop-color="${c}" stop-opacity="0.35"/><stop offset="100%" stop-color="#faf7f2"/></radialGradient></defs><rect width="400" height="280" fill="url(#${gid})"/><ellipse cx="200" cy="170" rx="150" ry="95" fill="${c}" opacity="0.12"/><circle cx="300" cy="75" r="48" fill="${c}" opacity="0.18"/><path d="M40 200 Q200 120 360 200" fill="none" stroke="${c}" stroke-width="3" opacity="0.25"/></svg>`;
+}
+
+function compactPrompt(input, maxLen = 260) {
+  const clean = String(input || "")
+    .replace(/\s+/g, " ")
+    // Keep letters from any script (do not strip non-Latin — that broke prompts for many stories).
+    .replace(/[^\p{L}\p{N}\s,.'\-–—]/gu, "")
+    .trim();
+  return clean.length > maxLen ? `${clean.slice(0, maxLen - 1)}…` : clean;
+}
+
+function buildMinimalRasterPrompt(entry) {
+  const bits = [
+    entry?.title,
+    entry?.label,
+    entry?.type,
+    entry?.place,
+    entry?.culture,
+    "storybook illustration warm light nostalgic hand painted",
+    "no text"
+  ].filter(Boolean);
+  return compactPrompt(bits.join(", "), 220);
+}
+
+/** Short English-friendly prompt for Pollinations (GET image.pollinations.ai — often rate-limited). */
+function buildRasterPromptForUrl(scene, entry) {
+  const core = [
+    scene?.sceneTitle,
+    scene?.caption,
+    scene?.emotion ? `mood ${scene.emotion}` : "",
+    entry?.place,
+    entry?.culture,
+    "nostalgic hand painted storybook illustration",
+    "soft light expressive faces",
+    "no text no watermark"
+  ]
+    .filter(Boolean)
+    .map(p => compactPrompt(p, 100))
+    .join(", ");
+  let prompt = compactPrompt(core, 340);
+  if (!prompt || prompt.length < 12) prompt = buildMinimalRasterPrompt(entry);
+  return prompt;
+}
+
+function buildRasterCandidateUrls(scene, entry, pageIndex, nonce = 0) {
+  const seedBase = Number(String(entry?.id || Date.now()).slice(-6)) + pageIndex * 101 + nonce * 67;
+  const prompt = buildRasterPromptForUrl(scene, entry);
+  const enc = encodeURIComponent(prompt);
+  // Smaller dimensions = faster + less likely to time out. Only image.pollinations.ai works without an API key (gen.pollinations.ai returns 401 for anonymous).
+  return [
+    `https://image.pollinations.ai/prompt/${enc}?width=768&height=512&model=turbo&seed=${seedBase}&nologo=true`,
+    `https://image.pollinations.ai/prompt/${enc}?width=896&height=616&model=flux&seed=${seedBase + 19}&nologo=true`,
+    `https://image.pollinations.ai/prompt/${enc}?width=640&height=448&seed=${seedBase + 31}&nologo=true&safe=true`,
+    `https://image.pollinations.ai/prompt/${encodeURIComponent(buildMinimalRasterPrompt(entry))}?width=512&height=384&model=turbo&seed=${seedBase + 47}&nologo=true`,
+  ];
+}
+
+function preloadImageUrl(url, timeoutMs = 8000) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const timer = setTimeout(() => {
+      img.src = "";
+      reject(new Error("timeout"));
+    }, timeoutMs);
+    img.onload = () => {
+      clearTimeout(timer);
+      resolve(url);
+    };
+    img.onerror = () => {
+      clearTimeout(timer);
+      reject(new Error("load error"));
+    };
+    img.referrerPolicy = "no-referrer";
+    img.src = url;
+  });
+}
+
+/** Optional photo overlay; returns null if service is down / rate-limited — SVG still shows. */
+async function findWorkingRasterUrl(scene, entry, pageIndex, nonce = 0) {
+  const urls = buildRasterCandidateUrls(scene, entry, pageIndex, nonce);
+  for (const url of urls) {
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      return await preloadImageUrl(url, 9000);
+    } catch {
+      /* try next candidate */
+    }
+  }
+  return null;
+}
+
 const SB_GEN_STEPS = [
   "Reading this archive entry…",
   "Extracting people, places, objects…",
-  "Ordering five real moments…",
-  "Painting scene 1…",
-  "Painting scene 2…",
-  "Painting scene 3…",
-  "Painting scene 4…",
-  "Painting scene 5…",
+  `Ordering ${SCRAPBOOK_PAGE_COUNT} real moments…`,
+  ...Array.from({ length: SCRAPBOOK_PAGE_COUNT }, (_, i) => `Painting scene ${i + 1}…`),
 ];
+const SB_TOTAL_STEPS = SB_GEN_STEPS.length;
 
 const EMOTION_COLORS = {
   warmth:"#d4845a", joy:"#c9a030", wonder:"#4a9e8a", longing:"#5a82c4",
@@ -888,6 +1047,7 @@ function Scrapbook({ entry, onClose }) {
   const [planDone, setPlanDone] = useState(false);
   const [autoPlay, setAutoPlay] = useState(false);
   const [genError, setGenError] = useState(null);
+  const [retryingPage, setRetryingPage] = useState(null);
   const autoRef = useRef(null);
   const pal = PALETTES[entry.p % PALETTES.length];
 
@@ -909,25 +1069,38 @@ function Scrapbook({ entry, onClose }) {
         setAnalysis(plan.analysis || {});
         setPlanDone(true);
         setGenStep(3);
-        const scenePages = plan.pages || [];
+        const scenePages = (plan.pages || []).slice(0, SCRAPBOOK_PAGE_COUNT);
+        let bundleSvgs = [null, null, null];
+        try {
+          bundleSvgs = await generateAllScrapbookSvgs(scenePages, entry, plan.analysis || {});
+        } catch (e) {
+          console.warn("Scrapbook bundle SVG:", e);
+        }
         for (let i = 0; i < scenePages.length; i++) {
           if (cancelled) return;
           setGenStep(4 + i);
           const scene = scenePages[i];
-          let svg = null;
-          try {
-            svg = await generateSceneSVG(scene, entry, plan.analysis || {});
-          } catch (svgErr) {
-            console.warn("Scrapbook SVG:", svgErr);
+          let svg = bundleSvgs[i];
+          if (!svg) {
+            if (i > 0) await new Promise(r => setTimeout(r, 400));
+            svg = await generateSceneSvgWithRetry(scene, entry, plan.analysis || {});
           }
+          if (!svg) svg = buildFallbackSceneSvg(pal.bg, i);
           if (cancelled) return;
           const row = {
             ...scene,
             svg,
-            noSvg: !svg,
+            rasterUrl: null,
+            rasterNonce: 0,
+            noSvg: false,
           };
           setPages(p => [...p, row]);
           if (i === 0) setCurrent(0);
+          const pageIdx = i;
+          findWorkingRasterUrl(scene, entry, pageIdx, 0).then(url => {
+            if (cancelled || !url) return;
+            setPages(prev => prev.map((p, j) => (j === pageIdx ? { ...p, rasterUrl: url } : p)));
+          }).catch(() => {});
         }
         setDone(true);
         if (!cancelled) setTimeout(() => setAutoPlay(true), 600);
@@ -939,9 +1112,40 @@ function Scrapbook({ entry, onClose }) {
           setAnalysis(plan.analysis || {});
           setUsedFallbackPlan(true);
           setPlanDone(true);
-          setGenStep(8);
-          setPages((plan.pages || []).map(scene => ({ ...scene, svg: null, noSvg: true })));
+          setGenStep(SB_TOTAL_STEPS);
+          const nextPages = [];
+          const fallbackPages = (plan.pages || []).slice(0, SCRAPBOOK_PAGE_COUNT);
+          let fbBundle = [null, null, null];
+          try {
+            fbBundle = await generateAllScrapbookSvgs(fallbackPages, entry, plan.analysis || {});
+          } catch (e) {
+            console.warn("Scrapbook bundle SVG (fallback plan):", e);
+          }
+          for (let idx = 0; idx < fallbackPages.length; idx++) {
+            const scene = fallbackPages[idx];
+            let svg = fbBundle[idx];
+            if (!svg) {
+              if (idx > 0) await new Promise(r => setTimeout(r, 400));
+              // eslint-disable-next-line no-await-in-loop
+              svg = await generateSceneSvgWithRetry(scene, entry, plan.analysis || {});
+            }
+            if (!svg) svg = buildFallbackSceneSvg(pal.bg, idx);
+            nextPages.push({
+              ...scene,
+              svg,
+              rasterUrl: null,
+              rasterNonce: 0,
+              noSvg: false,
+            });
+          }
+          setPages(nextPages);
           setCurrent(0);
+          fallbackPages.forEach((scene, idx) => {
+            findWorkingRasterUrl(scene, entry, idx, 0).then(url => {
+              if (cancelled || !url) return;
+              setPages(prev => prev.map((p, j) => (j === idx ? { ...p, rasterUrl: url } : p)));
+            }).catch(() => {});
+          });
         } catch (_) { /* noop */ }
         setDone(true);
       }
@@ -962,10 +1166,26 @@ function Scrapbook({ entry, onClose }) {
   }, [autoPlay, done, pages.length]);
 
   const goTo = i => { setCurrent(i); setAutoPlay(false); };
+  const retryPageImage = async index => {
+    const target = pages[index];
+    if (!target || retryingPage === index) return;
+    setRetryingPage(index);
+    try {
+      const attempt = Number(target.rasterNonce || 0) + 1;
+      const nextUrl = await findWorkingRasterUrl(target, entry, index, attempt);
+      setPages(prev => prev.map((p, i) => i === index ? {
+        ...p,
+        rasterNonce: attempt,
+        rasterUrl: nextUrl || p.rasterUrl || null,
+      } : p));
+    } finally {
+      setRetryingPage(null);
+    }
+  };
   const page = pages[current];
   const emoKey = page?.emotion ? String(page.emotion).toLowerCase() : "";
   const emoColor = page ? (EMOTION_COLORS[emoKey] || pal.bg) : pal.bg;
-  const progressPct = !planDone ? (genStep / 8) * 35 : done ? 100 : 35 + (pages.length / 5) * 65;
+  const progressPct = !planDone ? (genStep / SB_TOTAL_STEPS) * 35 : done ? 100 : 35 + (pages.length / SCRAPBOOK_PAGE_COUNT) * 65;
 
   const analysisLine = analysis && typeof analysis === "object"
     ? [
@@ -1006,7 +1226,7 @@ function Scrapbook({ entry, onClose }) {
           <div className="sb-generating">
             <div className="sb-gen-ring" style={{borderTopColor:pal.bg}}/>
             <div className="sb-gen-title" style={{fontStyle:"italic"}}>
-              {!planDone ? `Reading ${entry.person.split(" ")[0]}'s story…` : `Painting scene ${Math.min(genStep - 3, 5)} of 5…`}
+              {!planDone ? `Reading ${entry.person.split(" ")[0]}'s story…` : `Painting scene ${Math.min(Math.max(genStep - 3, 1), SCRAPBOOK_PAGE_COUNT)} of ${SCRAPBOOK_PAGE_COUNT}…`}
             </div>
             <div className="sb-gen-sub">
               {!planDone && "Extracting people, relationships, setting, objects, and emotions from this entry only…"}
@@ -1028,10 +1248,26 @@ function Scrapbook({ entry, onClose }) {
               <div className="sb-pages" style={{transform:`translateX(-${current*100}%)`}}>
                 {pages.map((pg, i) => (
                   <div key={i} className="sb-page">
-                    <div className="sb-scene-art" style={{background:`linear-gradient(160deg,${pal.bg}12,#f5ede008)`}}>
-                      {pg.svg ? (
-                        <div style={{width:"100%",height:"100%"}} dangerouslySetInnerHTML={{__html: pg.svg}}/>
-                      ) : (
+                    <div className="sb-scene-art" style={{background:`linear-gradient(160deg,${pal.bg}12,#f5ede008)`,position:"relative",overflow:"hidden"}}>
+                      {pg.svg && (
+                        <div
+                          className="sb-svg-layer"
+                          style={{position:"absolute",inset:0,zIndex:1,width:"100%",height:"100%"}}
+                          dangerouslySetInnerHTML={{__html: pg.svg}}
+                        />
+                      )}
+                      {pg.rasterUrl && (
+                        <img
+                          src={pg.rasterUrl}
+                          alt=""
+                          loading="lazy"
+                          decoding="async"
+                          referrerPolicy="no-referrer"
+                          onError={() => setPages(prev => prev.map((p, j) => j === i ? { ...p, rasterUrl: null } : p))}
+                          style={{position:"absolute",inset:0,zIndex:2,width:"100%",height:"100%",objectFit:"cover",pointerEvents:"none"}}
+                        />
+                      )}
+                      {!pg.svg && !pg.rasterUrl && (
                         <div className="sb-scene-fallback">
                           <div className="sb-fallback-frame">
                             <div className="sb-fallback-label">Memory scene (text)</div>
@@ -1055,6 +1291,17 @@ function Scrapbook({ entry, onClose }) {
                       </div>
                       <div className="sb-page-moment">{pg.sceneTitle}</div>
                       <div className="sb-page-detail">{pg.caption}</div>
+                      <div style={{marginTop:10,display:"flex",justifyContent:"flex-end"}}>
+                        <button
+                          type="button"
+                          className={`sb-auto-btn ${retryingPage===i?"playing":""}`}
+                          onClick={() => retryPageImage(i)}
+                          disabled={retryingPage===i}
+                          style={{padding:"5px 10px",border:"1px solid var(--border)",borderRadius:100}}
+                        >
+                          {retryingPage===i ? "Retrying image…" : "↻ Retry image"}
+                        </button>
+                      </div>
                       {pg.visualDetails && (
                         <div className="sb-page-visual">{pg.visualDetails}</div>
                       )}
@@ -1071,7 +1318,7 @@ function Scrapbook({ entry, onClose }) {
                   <div className="sb-page" style={{minWidth:"100%"}}>
                     <div className="sb-scene-art" style={{background:"var(--surface2)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:12}}>
                       <div className="sb-gen-ring" style={{borderTopColor:pal.bg}}/>
-                      <div style={{fontSize:12,color:"var(--muted)",fontStyle:"italic"}}>Painting scene {pages.length+1} of 5…</div>
+                      <div style={{fontSize:12,color:"var(--muted)",fontStyle:"italic"}}>Painting scene {pages.length+1} of {SCRAPBOOK_PAGE_COUNT}…</div>
                     </div>
                     <div className="sb-page-caption">
                       <div className="sb-page-num">Generating…</div>

@@ -7,7 +7,7 @@ Built for the **Creative Flourishing** hackathon theme, inspired by Dario Amodei
 ## ✨ Features
 
 - **Floating Story Bubbles** — 8 cultural stories drift gently across a warm cream canvas. Hover to preview, click to read.
-- **AI Memory Scrapbook** — Click "✦ AI Scrapbook" on any story to generate 5 personalised Ghibli-style illustrated scenes, painted by Claude based on the real details of that specific story.
+- **AI Memory Scrapbook** — Click "✦ AI Scrapbook" on any story to generate 3 personalised Ghibli-style illustrated scenes, painted by Claude based on the real details of that specific story.
 - **Preserve a Story** — Submit your own story. Claude transforms it into a poetic archive entry and adds a new bubble to the constellation.
 - **Community Chat** — Unlocks after you preserve a story. Chat with other storytellers, share stories, and feel less alone in the work of remembering.
 - **Theme Filters** — Filter bubbles by theme (migration, family, memory, tradition, and more).
