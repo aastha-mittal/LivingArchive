@@ -363,6 +363,8 @@ body.geo-map-on .center-title{display:none!important}
 .sb-page{min-width:100%;display:flex;flex-direction:column}
 .sb-scene-art{width:100%;height:260px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
 .sb-scene-art svg{width:100%;height:100%}
+.sb-seed-art{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
+.sb-svg-layer svg{display:block;width:100%;height:100%;object-fit:cover}
 .sb-scene-fallback{width:100%;height:100%;min-height:260px;display:flex;align-items:center;justify-content:center;padding:20px 22px;background:linear-gradient(165deg,rgba(245,237,224,.95) 0%,rgba(232,216,192,.88) 45%,rgba(200,98,62,.08) 100%);border-bottom:1px solid var(--border2)}
 .sb-fallback-frame{width:100%;max-width:340px;border-radius:12px;border:1px solid rgba(58,53,48,.12);background:rgba(250,247,242,.65);padding:16px 18px;box-shadow:inset 0 1px 0 rgba(255,255,255,.5)}
 .sb-fallback-label{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
@@ -1246,6 +1248,27 @@ const EMOTION_COLORS = {
   gratitude:"#6a9a6a", love:"#c46898", nostalgia:"#a07850", hope:"#5aaa78", bittersweet:"#a07868"
 };
 
+/** Public folder paths — must respect Vite base URL (e.g. GitHub Pages subpath). */
+function publicStoryAsset(relativePath) {
+  const base = import.meta.env.BASE_URL || "/";
+  const p = relativePath.startsWith("/") ? relativePath.slice(1) : relativePath;
+  return `${base}${p}`.replace(/\/{2,}/g, "/");
+}
+
+/** Curated full-page art for the eight seed bubbles (see public/stories/story-1.svg … story-8.svg). Story 1 uses three panels: story-1.svg, story-1-2.svg, story-1-3.svg. */
+function getSeedStoryScrapbookImageUrl(entryId, pageIndex = 0) {
+  const n = Number(entryId);
+  const pi = Math.min(Math.max(Number(pageIndex) || 0, 0), SCRAPBOOK_PAGE_COUNT - 1);
+  if (n >= 1 && n <= 8) {
+    if (n === 1) {
+      const urls = ["stories/story-1.svg", "stories/story-1-2.svg", "stories/story-1-3.svg"];
+      return publicStoryAsset(urls[pi] || urls[0]);
+    }
+    return publicStoryAsset(`stories/story-${n}.svg`);
+  }
+  return null;
+}
+
 // ── Scrapbook Component ───────────────────────────────────────────────────────
 function Scrapbook({ entry, onClose }) {
   const [pages, setPages] = useState([]);
@@ -1280,26 +1303,34 @@ function Scrapbook({ entry, onClose }) {
         setPlanDone(true);
         setGenStep(3);
         const scenePages = (plan.pages || []).slice(0, SCRAPBOOK_PAGE_COUNT);
+        const usesSeedArt = getSeedStoryScrapbookImageUrl(entry.id, 0) != null;
         let bundleSvgs = [null, null, null];
-        try {
-          bundleSvgs = await generateAllScrapbookSvgs(scenePages, entry, plan.analysis || {});
-        } catch (e) {
-          console.warn("Scrapbook bundle SVG:", e);
+        if (!usesSeedArt) {
+          try {
+            bundleSvgs = await generateAllScrapbookSvgs(scenePages, entry, plan.analysis || {});
+          } catch (e) {
+            console.warn("Scrapbook bundle SVG:", e);
+          }
         }
         for (let i = 0; i < scenePages.length; i++) {
           if (cancelled) return;
           setGenStep(4 + i);
           const scene = scenePages[i];
-          let svg = bundleSvgs[i];
-          if (!svg) {
-            if (i > 0) await new Promise(r => setTimeout(r, 400));
-            svg = await generateSceneSvgWithRetry(scene, entry, plan.analysis || {});
+          const pageSeed = getSeedStoryScrapbookImageUrl(entry.id, i);
+          let svg = null;
+          if (!pageSeed) {
+            svg = bundleSvgs[i];
+            if (!svg) {
+              if (i > 0) await new Promise(r => setTimeout(r, 400));
+              svg = await generateSceneSvgWithRetry(scene, entry, plan.analysis || {});
+            }
+            if (!svg) svg = buildFallbackSceneSvg(pal.bg, i);
           }
-          if (!svg) svg = buildFallbackSceneSvg(pal.bg, i);
           if (cancelled) return;
           const row = {
             ...scene,
             svg,
+            seedArtUrl: pageSeed || null,
             rasterUrl: null,
             rasterNonce: 0,
             noSvg: false,
@@ -1307,10 +1338,13 @@ function Scrapbook({ entry, onClose }) {
           setPages(p => [...p, row]);
           if (i === 0) setCurrent(0);
           const pageIdx = i;
-          findWorkingRasterUrl(scene, entry, pageIdx, 0).then(url => {
-            if (cancelled || !url) return;
-            setPages(prev => prev.map((p, j) => (j === pageIdx ? { ...p, rasterUrl: url } : p)));
-          }).catch(() => {});
+          // Do not stack Pollinations on curated seed art — it often breaks or covers the third slide.
+          if (!pageSeed) {
+            findWorkingRasterUrl(scene, entry, pageIdx, 0).then(url => {
+              if (cancelled || !url) return;
+              setPages(prev => prev.map((p, j) => (j === pageIdx ? { ...p, rasterUrl: url } : p)));
+            }).catch(() => {});
+          }
         }
         setDone(true);
         if (!cancelled) setTimeout(() => setAutoPlay(true), 600);
@@ -1325,24 +1359,32 @@ function Scrapbook({ entry, onClose }) {
           setGenStep(SB_TOTAL_STEPS);
           const nextPages = [];
           const fallbackPages = (plan.pages || []).slice(0, SCRAPBOOK_PAGE_COUNT);
+          const usesSeedFb = getSeedStoryScrapbookImageUrl(entry.id, 0) != null;
           let fbBundle = [null, null, null];
-          try {
-            fbBundle = await generateAllScrapbookSvgs(fallbackPages, entry, plan.analysis || {});
-          } catch (e) {
-            console.warn("Scrapbook bundle SVG (fallback plan):", e);
+          if (!usesSeedFb) {
+            try {
+              fbBundle = await generateAllScrapbookSvgs(fallbackPages, entry, plan.analysis || {});
+            } catch (e) {
+              console.warn("Scrapbook bundle SVG (fallback plan):", e);
+            }
           }
           for (let idx = 0; idx < fallbackPages.length; idx++) {
             const scene = fallbackPages[idx];
-            let svg = fbBundle[idx];
-            if (!svg) {
-              if (idx > 0) await new Promise(r => setTimeout(r, 400));
-              // eslint-disable-next-line no-await-in-loop
-              svg = await generateSceneSvgWithRetry(scene, entry, plan.analysis || {});
+            const pageSeedFb = getSeedStoryScrapbookImageUrl(entry.id, idx);
+            let svg = null;
+            if (!pageSeedFb) {
+              svg = fbBundle[idx];
+              if (!svg) {
+                if (idx > 0) await new Promise(r => setTimeout(r, 400));
+                // eslint-disable-next-line no-await-in-loop
+                svg = await generateSceneSvgWithRetry(scene, entry, plan.analysis || {});
+              }
+              if (!svg) svg = buildFallbackSceneSvg(pal.bg, idx);
             }
-            if (!svg) svg = buildFallbackSceneSvg(pal.bg, idx);
             nextPages.push({
               ...scene,
               svg,
+              seedArtUrl: pageSeedFb || null,
               rasterUrl: null,
               rasterNonce: 0,
               noSvg: false,
@@ -1350,12 +1392,14 @@ function Scrapbook({ entry, onClose }) {
           }
           setPages(nextPages);
           setCurrent(0);
-          fallbackPages.forEach((scene, idx) => {
-            findWorkingRasterUrl(scene, entry, idx, 0).then(url => {
-              if (cancelled || !url) return;
-              setPages(prev => prev.map((p, j) => (j === idx ? { ...p, rasterUrl: url } : p)));
-            }).catch(() => {});
-          });
+          if (!usesSeedFb) {
+            fallbackPages.forEach((scene, idx) => {
+              findWorkingRasterUrl(scene, entry, idx, 0).then(url => {
+                if (cancelled || !url) return;
+                setPages(prev => prev.map((p, j) => (j === idx ? { ...p, rasterUrl: url } : p)));
+              }).catch(() => {});
+            });
+          }
         } catch (_) { /* noop */ }
         setDone(true);
       }
@@ -1379,6 +1423,7 @@ function Scrapbook({ entry, onClose }) {
   const retryPageImage = async index => {
     const target = pages[index];
     if (!target || retryingPage === index) return;
+    if (target.seedArtUrl) return;
     setRetryingPage(index);
     try {
       const attempt = Number(target.rasterNonce || 0) + 1;
@@ -1459,10 +1504,22 @@ function Scrapbook({ entry, onClose }) {
                 {pages.map((pg, i) => (
                   <div key={i} className="sb-page">
                     <div className="sb-scene-art" style={{background:`linear-gradient(160deg,${pal.bg}12,#f5ede008)`,position:"relative",overflow:"hidden"}}>
+                      {pg.seedArtUrl && (
+                        <img
+                          key={pg.seedArtUrl}
+                          className="sb-seed-art"
+                          src={pg.seedArtUrl}
+                          alt=""
+                          loading="eager"
+                          decoding="async"
+                          draggable={false}
+                          style={{zIndex:1}}
+                        />
+                      )}
                       {pg.svg && (
                         <div
                           className="sb-svg-layer"
-                          style={{position:"absolute",inset:0,zIndex:1,width:"100%",height:"100%"}}
+                          style={{position:"absolute",inset:0,zIndex:2,width:"100%",height:"100%"}}
                           dangerouslySetInnerHTML={{__html: pg.svg}}
                         />
                       )}
@@ -1474,10 +1531,10 @@ function Scrapbook({ entry, onClose }) {
                           decoding="async"
                           referrerPolicy="no-referrer"
                           onError={() => setPages(prev => prev.map((p, j) => j === i ? { ...p, rasterUrl: null } : p))}
-                          style={{position:"absolute",inset:0,zIndex:2,width:"100%",height:"100%",objectFit:"cover",pointerEvents:"none"}}
+                          style={{position:"absolute",inset:0,zIndex:3,width:"100%",height:"100%",objectFit:"cover",pointerEvents:"none"}}
                         />
                       )}
-                      {!pg.svg && !pg.rasterUrl && (
+                      {!pg.seedArtUrl && !pg.svg && !pg.rasterUrl && (
                         <div className="sb-scene-fallback">
                           <div className="sb-fallback-frame">
                             <div className="sb-fallback-label">Memory scene (text)</div>
@@ -1506,8 +1563,9 @@ function Scrapbook({ entry, onClose }) {
                           type="button"
                           className={`sb-auto-btn ${retryingPage===i?"playing":""}`}
                           onClick={() => retryPageImage(i)}
-                          disabled={retryingPage===i}
-                          style={{padding:"5px 10px",border:"1px solid var(--border)",borderRadius:100}}
+                          disabled={retryingPage===i || !!pg.seedArtUrl}
+                          style={{padding:"5px 10px",border:"1px solid var(--border)",borderRadius:100,opacity:pg.seedArtUrl?0.4:1}}
+                          title={pg.seedArtUrl ? "Using curated illustration for this story" : undefined}
                         >
                           {retryingPage===i ? "Retrying image…" : "↻ Retry image"}
                         </button>
@@ -1524,27 +1582,15 @@ function Scrapbook({ entry, onClose }) {
                     </div>
                   </div>
                 ))}
-                {!done && (
-                  <div className="sb-page" style={{minWidth:"100%"}}>
-                    <div className="sb-scene-art" style={{background:"var(--surface2)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:12}}>
-                      <div className="sb-gen-ring" style={{borderTopColor:pal.bg}}/>
-                      <div style={{fontSize:12,color:"var(--muted)",fontStyle:"italic"}}>Painting scene {pages.length+1} of {SCRAPBOOK_PAGE_COUNT}…</div>
-                    </div>
-                    <div className="sb-page-caption">
-                      <div className="sb-page-num">Generating…</div>
-                      <div className="sb-page-moment" style={{color:"var(--muted)"}}>Scene {pages.length+1}</div>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
             <div className="sb-controls">
               <button type="button" className="sb-nav-btn" onClick={()=>goTo(Math.max(0,current-1))} disabled={current===0}>←</button>
               <div className="sb-dots">
-                {Array.from({length:Math.max(pages.length + (done?0:1), 1)}).map((_,i)=>(
+                {pages.map((_,i)=>(
                   <div key={i} className={`sb-dot ${i===current?"on":""}`}
-                    onClick={()=>i<pages.length&&goTo(i)}
-                    style={i===current?{background:emoColor}:{opacity:i<pages.length?1:.25}}/>
+                    onClick={()=>goTo(i)}
+                    style={i===current?{background:emoColor}:{opacity:1}}/>
                 ))}
               </div>
               <div style={{display:"flex",alignItems:"center",gap:8}}>
