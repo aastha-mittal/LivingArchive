@@ -80,6 +80,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink)}
 .bub-person{font-size:8px;font-family:'DM Sans',sans-serif;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.88);font-weight:500;text-shadow:0 1px 4px rgba(0,0,0,.45)}
 .bub-likes{position:absolute;bottom:-6px;right:-6px;background:white;border-radius:100px;padding:2px 6px;font-size:9px;font-weight:700;color:var(--ink2);box-shadow:0 2px 8px rgba(0,0,0,.15);display:flex;align-items:center;gap:2px;border:1px solid var(--border);transition:transform .2s}
 .bub:hover .bub-likes{transform:scale(1.1)}
+.bub-private-lock{position:absolute;top:-6px;right:-6px;background:white;border-radius:50%;width:18px;height:18px;font-size:10px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.18);border:1px solid var(--border)}
 
 /* BURST */
 .burst{position:fixed;pointer-events:none;z-index:100}
@@ -185,6 +186,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink)}
 .smhero-ov{position:absolute;inset:0;background:linear-gradient(to top,rgba(250,247,242,1) 0%,rgba(250,247,242,.3) 55%,transparent 100%)}
 .smhero-content{position:relative;z-index:1}
 .sm-chip{font-size:10px;letter-spacing:.12em;text-transform:uppercase;padding:4px 10px;border-radius:20px;display:inline-block;font-weight:500;margin-bottom:8px}
+.sm-private-badge{font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:4px 10px;border-radius:20px;display:inline-flex;align-items:center;gap:4px;font-weight:500;margin-bottom:8px;background:rgba(0,0,0,.18);color:rgba(255,255,255,.9);border:1px solid rgba(255,255,255,.2)}
 .sm-title{font-family:'Playfair Display',serif;font-size:clamp(20px,3.5vw,30px);font-weight:400;color:var(--ink);line-height:1.15;margin-bottom:4px}
 .sm-meta{font-size:12px;color:var(--muted);letter-spacing:.04em}
 .sm-close{position:absolute;top:14px;right:14px;width:30px;height:30px;border-radius:50%;background:rgba(250,247,242,.9);border:1px solid var(--border);color:var(--ink2);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;z-index:10;transition:all .2s}
@@ -195,6 +197,15 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink)}
 .sm-act-btn.liked{background:#fff8f5;border-color:#f4d0c0;color:var(--accent)}
 .sm-act-btn.liked .h-icon{animation:heartpop .35s ease}
 @keyframes heartpop{0%{transform:scale(1)}40%{transform:scale(1.6)}100%{transform:scale(1)}}
+.sm-delete-btn{margin-left:auto;color:#b94040}
+.sm-delete-btn:hover{background:#fff0f0;border-color:#f4c0c0;color:#b94040}
+.sm-confirm-delete{margin:0 26px 0;padding:14px 16px;background:#fff8f8;border:1px solid #f4c0c0;border-radius:10px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.sm-confirm-text{font-size:13px;color:var(--ink2);margin:0;flex:1}
+.sm-confirm-btns{display:flex;gap:8px;flex-shrink:0}
+.sm-confirm-cancel{padding:6px 14px;border-radius:100px;border:1px solid var(--border);background:transparent;font-size:12px;cursor:pointer;color:var(--muted)}
+.sm-confirm-cancel:hover{background:var(--surface2)}
+.sm-confirm-go{padding:6px 14px;border-radius:100px;border:1px solid #f4c0c0;background:#b94040;color:white;font-size:12px;font-weight:600;cursor:pointer}
+.sm-confirm-go:hover{background:#a03030}
 .smbody{padding:20px 26px 28px}
 .sm-quote{font-family:'Playfair Display',serif;font-style:italic;font-size:17px;line-height:1.65;color:var(--ink2);border-left:1px solid var(--border2);padding:8px 0 8px 18px;margin-bottom:22px;font-weight:300}
 .sm-sec{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:500;margin-bottom:10px}
@@ -237,6 +248,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink)}
 .astory-count{font-variant-numeric:tabular-nums}
 .astory-count.warn{color:var(--accent)}
 .avideo-hint{font-size:11px;color:var(--muted);line-height:1.5;margin-top:4px}
+.aprivate-toggle{display:flex;align-items:flex-start;gap:10px;cursor:pointer;user-select:none}
+.aprivate-switch{width:36px;height:20px;border-radius:10px;background:var(--border2);position:relative;transition:background .2s;flex-shrink:0;margin-top:2px;border:1px solid var(--border)}
+.aprivate-switch.on{background:var(--ink)}
+.aprivate-knob{width:14px;height:14px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.aprivate-switch.on .aprivate-knob{transform:translateX(16px)}
 .avideo-preview{width:100%;max-height:160px;border-radius:8px;margin-top:8px;background:var(--ink)}
 .avideo-file{font-size:12px;color:var(--ink2)}
 .aselect{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239a9490'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;cursor:pointer}
@@ -666,6 +682,7 @@ function Bubble({ entry, onClick, onHover, dimmed, index, chatOpen }) {
           {entry.size>105&&<span className="bub-person">{entry.person.split(" ").slice(0,2).join(" ")}</span>}
         </div>
         {!dimmed&&<div className="bub-likes">❤ {entry.likes}</div>}
+        {entry.isPrivate&&<div className="bub-private-lock">🔒</div>}
       </div>
     </div>
   );
@@ -913,13 +930,15 @@ function Scrapbook({ entry, onClose }) {
 
 
 // ── Story Modal ───────────────────────────────────────────────────────────────
-function StoryModal({ entry, entries, likes, onLike, onClose, onShareInChat, onOpenRelated }) {
+function StoryModal({ entry, entries, likes, onLike, onClose, onDelete, onTogglePrivate, onShareInChat, onOpenRelated }) {
   if(!entry) return null;
   const pal=PALETTES[entry.p%PALETTES.length];
   const liked=likes[entry.id];
   const total=(entry.likes||0)+(liked?1:0);
   const related=entries.filter(e=>e.id!==entry.id&&e.themes.some(t=>entry.themes.includes(t))).slice(0,4);
   const [showScrapbook, setShowScrapbook] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmPublic, setConfirmPublic] = useState(false);
   // SVG pattern for hero
   const pat=`<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40'><circle cx='20' cy='20' r='1.5' fill='${pal.bg}'/><circle cx='0' cy='0' r='1' fill='${pal.bg}'/><circle cx='40' cy='40' r='1' fill='${pal.bg}'/></svg>`;
   return (
@@ -932,7 +951,10 @@ function StoryModal({ entry, entries, likes, onLike, onClose, onShareInChat, onO
           <div className="smhero-ov"/>
           <button className="sm-close" onClick={onClose}>✕</button>
           <div className="smhero-content">
-            <span className="sm-chip" style={{background:pal.bg+"14",color:pal.bg,border:`1px solid ${pal.bg}30`}}>{entry.emoji} {entry.type}</span>
+            <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+              <span className="sm-chip" style={{background:pal.bg+"14",color:pal.bg,border:`1px solid ${pal.bg}30`}}>{entry.emoji} {entry.type}</span>
+              {entry.isPrivate&&<span className="sm-private-badge">🔒 Private</span>}
+            </div>
             <h2 className="sm-title">{entry.title}</h2>
             <div className="sm-meta">{entry.person} · {entry.place} · {entry.culture}</div>
           </div>
@@ -944,7 +966,27 @@ function StoryModal({ entry, entries, likes, onLike, onClose, onShareInChat, onO
           <button className="sm-act-btn" style={{background:"#f5f0e8",border:"1px solid #e0d8cc",color:"#3a3530",fontWeight:500}} onClick={() => setShowScrapbook(true)}>✦ AI Scrapbook</button>
           <button className="sm-act-btn" onClick={()=>{onShareInChat(entry);onClose();}}>💬 Community</button>
           <button className="sm-act-btn" onClick={()=>navigator.clipboard?.writeText(entry.quote)}>📋 Quote</button>
+          {onTogglePrivate && <button className="sm-act-btn" onClick={()=>entry.isPrivate ? setConfirmPublic(true) : onTogglePrivate(entry.id)}>{entry.isPrivate ? "🔓 Make Public" : "🔒 Make Private"}</button>}
+          {onDelete && <button className="sm-act-btn sm-delete-btn" onClick={()=>setConfirmDelete(true)}>🗑 Delete</button>}
         </div>
+        {confirmDelete && (
+          <div className="sm-confirm-delete">
+            <p className="sm-confirm-text">Permanently delete <strong>"{entry.title}"</strong>? This cannot be undone.</p>
+            <div className="sm-confirm-btns">
+              <button className="sm-confirm-cancel" onClick={()=>setConfirmDelete(false)}>Cancel</button>
+              <button className="sm-confirm-go" onClick={()=>{onDelete(entry.id);onClose();}}>Yes, delete</button>
+            </div>
+          </div>
+        )}
+        {confirmPublic && (
+          <div className="sm-confirm-delete" style={{background:"#f8fbf8",borderColor:"#b8d8b8"}}>
+            <p className="sm-confirm-text">Make <strong>"{entry.title}"</strong> visible to everyone in the archive?</p>
+            <div className="sm-confirm-btns">
+              <button className="sm-confirm-cancel" onClick={()=>setConfirmPublic(false)}>Cancel</button>
+              <button className="sm-confirm-go" style={{background:"#3a7a50",borderColor:"#b8d8b8"}} onClick={()=>{onTogglePrivate(entry.id);setConfirmPublic(false);}}>Yes, make public</button>
+            </div>
+          </div>
+        )}
         <div className="smbody">
           {entry.videoUrl && (
             <>
@@ -987,7 +1029,7 @@ const MIN_STORY_CHARS = 30;
 
 // ── Add Modal ─────────────────────────────────────────────────────────────────
 function AddModal({ onClose, onSubmit }) {
-  const [f,setF]=useState({name:"",culture:"",place:"",type:"Family Memory",story:""});
+  const [f,setF]=useState({name:"",culture:"",place:"",type:"Family Memory",story:"",title:"",isPrivate:false});
   const [videoPreviewUrl, setVideoPreviewUrl] = useState(null);
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
 
@@ -1056,11 +1098,21 @@ function AddModal({ onClose, onSubmit }) {
             <div className="afield"><label className="alabel">Culture / Heritage</label><input className="ainput" value={f.culture} onChange={e=>s("culture",e.target.value)} placeholder="e.g. Sichuan Chinese"/></div>
             <div className="afield"><label className="alabel">Place</label><input className="ainput" value={f.place} onChange={e=>s("place",e.target.value)} placeholder="e.g. Lahore → London"/></div>
           </div>
+          <div className="afield"><label className="alabel">Title <span style={{fontWeight:400,color:"var(--muted)"}}>— optional</span></label><input className="ainput" value={f.title} onChange={e=>s("title",e.target.value)} placeholder="e.g. The Last Recipe, A Train Across the Border…"/></div>
           <div className="afield"><label className="alabel">The Story *</label><textarea className="atextarea" value={f.story} onChange={e=>s("story",e.target.value)} placeholder="Write it exactly as you remember it. Raw is beautiful. There is no wrong way to tell a true story..."/>
             <div className="astory-meta">
               <span className="alabel" style={{margin:0}}>Name + story required</span>
-              <span className={`astory-count ${storyLen < MIN_STORY_CHARS ? "warn" : ""}`}>{storyLen} / {MIN_STORY_CHARS} characters</span>
+              <span className={`astory-count ${storyLen < MIN_STORY_CHARS ? "warn" : ""}`}>{storyLen < MIN_STORY_CHARS ? `${storyLen} / ${MIN_STORY_CHARS} character minimum` : `${storyLen} characters`}</span>
             </div>
+          </div>
+          <div className="afield">
+            <label className="aprivate-toggle" onClick={()=>s("isPrivate",!f.isPrivate)}>
+              <div className={`aprivate-switch ${f.isPrivate?"on":""}`}><div className="aprivate-knob"/></div>
+              <div>
+                <div className="alabel" style={{margin:0,cursor:"pointer"}}>Make this story private</div>
+                <div style={{fontSize:11,color:"var(--muted)",marginTop:2}}>{f.isPrivate ? "Only you can see this story — it won't appear in the shared archive." : "This story will be visible to everyone in the archive."}</div>
+              </div>
+            </label>
           </div>
           <div className="afield">
             <label className="alabel">Preserve a video (optional)</label>
@@ -1298,7 +1350,9 @@ export default function App() {
       const entry={
         ...parsed,id:Date.now(),p:idx,likes:0,person:form.name,place:form.place||"Unknown",culture:form.culture||"Unknown",type:form.type,
         x:8+Math.random()*74,y:15+Math.random()*62,size:100+Math.floor(Math.random()*26),
+        ...(form.title?.trim() ? { title: form.title.trim(), label: form.title.trim().length > 32 ? form.title.trim().slice(0, 29) + "…" : form.title.trim() } : {}),
         ...(form.videoUrl ? { videoUrl: form.videoUrl } : {}),
+        ...(form.isPrivate ? { isPrivate: true } : {}),
       };
       await new Promise(r=>setTimeout(r,500));
       setEntries(e=>[...e,entry]);
@@ -1309,7 +1363,10 @@ export default function App() {
         setChatUnlocked(true);
         const name=form.name.split(" ")[0];
         setMyName(name);setMyColor(PALETTES[idx].bg);
-        setMsgs(m=>[...m,{id:Date.now(),author:name,color:PALETTES[idx].bg,text:`Just shared "${parsed.label}" — glad to be here.`,time:new Date(),storyRef:{label:parsed.label,id:entry.id}}]);
+        const chatText = form.isPrivate ? "Just preserved a private story — glad to be here." : `Just shared "${parsed.label}" — glad to be here.`;
+        const chatMsg = {id:Date.now(),author:name,color:PALETTES[idx].bg,text:chatText,time:new Date()};
+        if (!form.isPrivate) chatMsg.storyRef = {label:parsed.label,id:entry.id};
+        setMsgs(m=>[...m,chatMsg]);
         setChatOpen(true);
       }
       showToast("Story preserved and added to the archive ✦");
@@ -1388,7 +1445,7 @@ export default function App() {
           {filter&&<button className="btn" onClick={()=>setFilter(null)}>✕ {filter}</button>}
           <button className="btn" onClick={pickRandom}>🎲 Random</button>
           <button className="btn primary" onClick={()=>setShowAdd(true)}>+ Preserve</button>
-          <button className="btn chat-toggle" onClick={openChat}>
+          <button className="btn chat-toggle" onClick={()=>{chatOpen?setChatOpen(false):openChat();}}>
             💬 Community
             {newMsgCount>0&&!chatOpen&&<span className="chat-badge">{newMsgCount>9?"9+":newMsgCount}</span>}
           </button>
@@ -1453,6 +1510,8 @@ export default function App() {
 
       {selected&&<StoryModal entry={selected} entries={entries} likes={likes}
         onLike={handleLike} onClose={()=>setSelected(null)}
+        onDelete={id=>{setEntries(es=>es.filter(e=>e.id!==id));setSelected(null);}}
+        onTogglePrivate={id=>{setEntries(es=>es.map(e=>e.id===id?{...e,isPrivate:!e.isPrivate}:e));setSelected(s=>s&&s.id===id?{...s,isPrivate:!s.isPrivate}:s);}}
         onShareInChat={shareInChat} onOpenRelated={e=>setSelected(e)}/>}
       {showAdd&&<AddModal onClose={()=>setShowAdd(false)} onSubmit={handleSubmit}/>}
       {loading&&<LoadModal step={loadStep}/>}
