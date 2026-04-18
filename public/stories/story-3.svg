@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 280" width="400" height="280">
+  <defs>
+    <linearGradient id="s3sky" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#2a3a5a"/>
+      <stop offset="50%" style="stop-color:#5a6a8a"/>
+      <stop offset="100%" style="stop-color:#7a9ab8"/>
+    </linearGradient>
+    <linearGradient id="s3water" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#4a8a9a"/>
+      <stop offset="100%" style="stop-color:#3a6a7a"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="280" fill="url(#s3sky)"/>
+  <circle cx="100" cy="55" r="3" fill="#fff" opacity=".6"/>
+  <circle cx="130" cy="48" r="2" fill="#fff" opacity=".5"/>
+  <circle cx="280" cy="62" r="2.5" fill="#fff" opacity=".55"/>
+  <circle cx="310" cy="40" r="2" fill="#fff" opacity=".45"/>
+  <path d="M0 165 Q100 155 200 168 T400 162 L400 280 L0 280 Z" fill="url(#s3water)" opacity=".85"/>
+  <path d="M0 170 Q80 175 160 172 Q240 168 320 175 L400 172 L400 280 L0 280" fill="none" stroke="#fff" stroke-opacity=".15" stroke-width="2"/>
+  <ellipse cx="200" cy="120" rx="40" ry="8" fill="#fff" opacity=".12"/>
+  <path d="M185 95 L200 75 L215 95 Z" fill="#e8e8f0" opacity=".35"/>
+</svg>
