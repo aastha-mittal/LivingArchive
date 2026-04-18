@@ -1,0 +1,1304 @@
+import { useState, useEffect, useRef, useCallback } from "react";
+
+const FONTS = `@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&family=DM+Sans:wght@300;400;500&display=swap');`;
+
+const CSS = `
+${FONTS}
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f5f0e8;--ink:#0f0d0a;--ink2:#3a3530;--muted:#9a9490;
+  --border:#e0d8cc;--border2:#ccc4b8;--surface:#faf7f2;--surface2:#f0ebe0;
+  --chat-w:320px;--accent:#c8623e;
+}
+html,body{height:100%;overflow:hidden;cursor:default}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink)}
+
+/* CANVAS */
+.canvas{position:fixed;inset:0;overflow:hidden;z-index:1}
+
+/* PARTICLE CANVAS */
+.particle-canvas{position:fixed;inset:0;pointer-events:none;z-index:0}
+
+/* AMBIENT TICKER */
+.ticker{position:fixed;bottom:0;left:0;right:0;z-index:8;overflow:hidden;height:28px;pointer-events:none;border-top:1px solid var(--border)}
+.ticker-inner{display:flex;gap:48px;white-space:nowrap;animation:ticker-scroll 40s linear infinite;padding:5px 0}
+.ticker-item{font-family:'Playfair Display',serif;font-style:italic;font-size:11px;color:var(--muted);opacity:.6;flex-shrink:0;display:flex;align-items:center;gap:8px}
+.ticker-sep{opacity:.3}
+@keyframes ticker-scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+/* CENTER TITLE */
+.center-title{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:5;text-align:center;pointer-events:none;user-select:none;transition:left .5s cubic-bezier(.16,1,.3,1)}
+.center-title.shifted{left:calc(50% - 160px)}
+.center-title h1{font-family:'Playfair Display',serif;font-size:clamp(52px,7vw,90px);font-weight:700;color:var(--ink);line-height:1;letter-spacing:-.02em;opacity:.45;animation:title-breathe 8s ease-in-out infinite}
+@keyframes title-breathe{0%,100%{opacity:.45}50%{opacity:.38}}
+.center-title p{font-family:'Playfair Display',serif;font-style:italic;font-size:14px;color:var(--muted);margin-top:10px;opacity:.75}
+.center-title .live-tag{display:inline-flex;align-items:center;gap:5px;background:rgba(200,98,62,.1);border:1px solid rgba(200,98,62,.25);border-radius:100px;padding:3px 10px;font-family:'DM Sans',sans-serif;font-size:10px;font-weight:500;color:var(--accent);letter-spacing:.08em;text-transform:uppercase;margin-top:8px}
+.live-pip{width:5px;height:5px;border-radius:50%;background:var(--accent);animation:pip 1.5s ease-in-out infinite}
+
+/* NAV */
+.nav{position:fixed;top:0;left:0;right:0;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:10px 20px;background:rgba(245,240,232,.95);backdrop-filter:blur(24px);border-bottom:1px solid var(--border);gap:10px}
+.nav-left{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.nav-pip{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:pip 2.5s ease-in-out infinite;flex-shrink:0}
+@keyframes pip{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(.6);opacity:.5}}
+.nav-count{font-size:11px;color:var(--muted)}
+.nav-center{flex:1;max-width:340px;position:relative}
+.search-box{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:100px;padding:6px 12px 6px 32px;font-family:'DM Sans',sans-serif;font-size:12px;color:var(--ink);outline:none;transition:border-color .18s,box-shadow .18s}
+.search-box::placeholder{color:var(--muted)}
+.search-box:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(200,98,62,.1)}
+.search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:12px;pointer-events:none;opacity:.45}
+.nav-right{display:flex;align-items:center;gap:7px;flex-shrink:0}
+.btn{padding:6px 14px;border-radius:100px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:500;cursor:pointer;transition:all .18s;border:1px solid var(--border2);background:var(--surface);color:var(--ink2);white-space:nowrap}
+.btn:hover{border-color:#aaa;color:var(--ink)}
+.btn.primary{background:var(--ink);border-color:var(--ink);color:#f5f0e8}
+.btn.primary:hover{background:#2a2520;transform:translateY(-1px);box-shadow:0 4px 14px rgba(15,13,10,.18)}
+.btn.chat-toggle{display:flex;align-items:center;gap:4px;position:relative}
+.chat-badge{position:absolute;top:-4px;right:-4px;width:15px;height:15px;background:var(--accent);border-radius:50%;font-size:8px;font-weight:700;color:white;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg)}
+
+/* FILTER */
+.filter{position:fixed;top:50px;left:50%;transform:translateX(-50%);z-index:40;display:flex;gap:2px;padding:3px;background:rgba(245,240,232,.96);border:1px solid var(--border);border-radius:100px;backdrop-filter:blur(16px)}
+.fpill{padding:4px 10px;border-radius:100px;font-size:9px;letter-spacing:.06em;font-weight:500;text-transform:uppercase;cursor:pointer;transition:all .18s;border:none;background:transparent;color:var(--muted);white-space:nowrap}
+.fpill:hover{color:var(--ink2)}
+.fpill.on{background:var(--ink);color:#f5f0e8;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+
+/* BUBBLES */
+.bub-wrap{position:absolute;left:0;top:0;animation:bub-intro .7s cubic-bezier(.16,1,.3,1) both}
+@keyframes bub-intro{from{opacity:0;transform:translate(var(--ix),var(--iy)) scale(.3)}to{opacity:1}}
+.bub{position:relative;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;text-align:center;will-change:transform;transition:opacity .4s,filter .4s}
+.bub::after{content:'';position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle at 28% 22%,rgba(255,255,255,.28),transparent 60%);pointer-events:none}
+.bub::before{content:'';position:absolute;inset:-2px;border-radius:50%;background:inherit;filter:blur(8px);opacity:.4;z-index:-1;transition:opacity .3s}
+.bub:hover::before{opacity:.7}
+.bub:hover{z-index:20;transform:scale(1.06)}
+.bub:hover .bub-ring{transform:scale(1.16);opacity:.65}
+.bub-ring{position:absolute;inset:-8px;border-radius:50%;transition:transform .35s,opacity .35s;opacity:0;pointer-events:none;border-width:1.5px;border-style:solid;animation:ring-spin 20s linear infinite}
+@keyframes ring-spin{to{transform:rotate(360deg) scale(1)}}
+.bub:hover .bub-ring{animation:none;transform:scale(1.16)}
+.bub-inner{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:12px;width:100%;height:100%}
+.bub-emoji{line-height:1;flex-shrink:0}
+.bub-label{font-family:'Playfair Display',serif;font-style:italic;font-weight:700;line-height:1.2;color:white;text-shadow:0 1px 6px rgba(0,0,0,.55)}
+.bub-person{font-size:8px;font-family:'DM Sans',sans-serif;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.88);font-weight:500;text-shadow:0 1px 4px rgba(0,0,0,.45)}
+.bub-likes{position:absolute;bottom:-6px;right:-6px;background:white;border-radius:100px;padding:2px 6px;font-size:9px;font-weight:700;color:var(--ink2);box-shadow:0 2px 8px rgba(0,0,0,.15);display:flex;align-items:center;gap:2px;border:1px solid var(--border);transition:transform .2s}
+.bub:hover .bub-likes{transform:scale(1.1)}
+
+/* BURST */
+.burst{position:fixed;pointer-events:none;z-index:100}
+.burst-particle{position:absolute;width:6px;height:6px;border-radius:50%;animation:burst-fly var(--dur) ease-out forwards}
+@keyframes burst-fly{0%{transform:translate(0,0) scale(1);opacity:1}100%{transform:translate(var(--tx),var(--ty)) scale(0);opacity:0}}
+
+/* FLOAT QUOTE */
+.float-quotes{position:fixed;inset:0;pointer-events:none;z-index:6;overflow:hidden}
+.fquote{position:absolute;font-family:'Playfair Display',serif;font-style:italic;color:var(--ink2);opacity:0;max-width:200px;line-height:1.5;animation:fquote-float var(--dur) ease-in-out forwards;text-align:center;letter-spacing:.01em;pointer-events:none}
+@keyframes fquote-float{0%{opacity:0;transform:translateY(8px)}15%{opacity:.13}75%{opacity:.09}100%{opacity:0;transform:translateY(-60px)}}
+
+/* TOOLTIP */
+.tooltip{position:fixed;z-index:70;max-width:230px;background:var(--ink);color:#f5f0e8;border-radius:14px;padding:12px 14px;pointer-events:none;animation:t-pop .18s cubic-bezier(.16,1,.3,1);box-shadow:0 12px 40px rgba(0,0,0,.25)}
+@keyframes t-pop{from{opacity:0;transform:scale(.92) translateY(4px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.tooltip-type{font-size:9px;letter-spacing:.14em;text-transform:uppercase;opacity:.55;margin-bottom:5px}
+.tooltip-quote{font-family:'Playfair Display',serif;font-style:italic;font-size:13px;line-height:1.55;opacity:.95}
+.tooltip-meta{font-size:10px;opacity:.45;margin-top:6px}
+.tooltip-hint{font-size:10px;opacity:.4;margin-top:4px;text-align:right}
+
+/* CONNECTIONS */
+.conn{position:fixed;inset:0;pointer-events:none;z-index:2}
+
+/* STATS */
+.stats-bar{position:fixed;bottom:32px;left:20px;z-index:10;display:flex;flex-direction:column;gap:5px;pointer-events:none}
+.stat-pill{display:flex;align-items:center;gap:6px;background:rgba(245,240,232,.9);border:1px solid var(--border);border-radius:100px;padding:4px 11px;backdrop-filter:blur(12px)}
+.stat-dot{width:5px;height:5px;border-radius:50%;background:var(--accent);animation:pip 2s ease-in-out infinite}
+.stat-text{font-size:10px;color:var(--ink2);font-weight:500}
+.stat-num{font-family:'Playfair Display',serif;font-weight:700;font-size:12px;color:var(--ink);min-width:24px;text-align:right;transition:transform .2s}
+.stat-num.bump{animation:num-bump .3s ease}
+@keyframes num-bump{0%{transform:scale(1)}50%{transform:scale(1.3)}100%{transform:scale(1)}}
+
+/* HINT */
+.hint{position:fixed;bottom:32px;right:20px;z-index:10;pointer-events:none;animation:hint-up .8s .8s ease both;opacity:0}
+@keyframes hint-up{to{opacity:1}from{opacity:0;transform:translateY(6px)}}
+.hint p{font-family:'Playfair Display',serif;font-style:italic;font-size:11px;color:var(--muted);text-align:right;line-height:1.6}
+
+/* SEARCH RESULTS */
+.search-results{position:fixed;top:50px;left:50%;transform:translateX(-50%);z-index:60;background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:0 16px 48px rgba(15,13,10,.15);min-width:320px;max-width:400px;overflow:hidden;animation:t-pop .2s ease}
+.sr-item{display:flex;align-items:center;gap:10px;padding:9px 13px;cursor:pointer;transition:background .15s;border-bottom:1px solid var(--border)}
+.sr-item:last-child{border-bottom:none}
+.sr-item:hover{background:var(--surface2)}
+.sr-emoji{font-size:18px;flex-shrink:0}
+.sr-info{flex:1;min-width:0}
+.sr-label{font-family:'Playfair Display',serif;font-style:italic;font-size:13px;color:var(--ink)}
+.sr-meta{font-size:10px;color:var(--muted)}
+.sr-empty{padding:18px;text-align:center;font-size:12px;color:var(--muted);font-style:italic}
+
+/* CHAT PANEL */
+.chat-panel{position:fixed;top:0;right:0;bottom:0;width:var(--chat-w);background:var(--surface);border-left:1px solid var(--border);z-index:45;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .38s cubic-bezier(.16,1,.3,1);box-shadow:-8px 0 40px rgba(15,13,10,.08)}
+.chat-panel.open{transform:translateX(0)}
+.chat-head{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.chat-head-left{display:flex;flex-direction:column;gap:2px}
+.chat-head-title{font-family:'Playfair Display',serif;font-size:15px;font-weight:700;color:var(--ink)}
+.chat-head-sub{font-size:10px;color:var(--muted)}
+.chat-close{width:26px;height:26px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.chat-close:hover{background:var(--border);color:var(--ink)}
+.chat-locked{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px;text-align:center;gap:14px}
+.lock-icon{font-size:32px;opacity:.4}
+.lock-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:700;color:var(--ink)}
+.lock-sub{font-size:13px;color:var(--muted);line-height:1.6}
+.lock-btn{padding:10px 20px;border-radius:100px;background:var(--ink);border:none;color:#f5f0e8;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all .18s}
+.lock-btn:hover{background:#2a2520;transform:translateY(-1px)}
+.members-bar{padding:8px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:5px;flex-shrink:0;overflow-x:auto}
+.members-bar::-webkit-scrollbar{display:none}
+.member-av{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:white;flex-shrink:0;position:relative;cursor:default;transition:transform .2s}
+.member-av:hover{transform:scale(1.1)}
+.member-av[data-online]::after{content:'';position:absolute;bottom:0;right:0;width:6px;height:6px;border-radius:50%;background:#5a9e6e;border:1.5px solid var(--surface)}
+.members-more{font-size:10px;color:var(--muted);white-space:nowrap;margin-left:2px}
+.chat-messages{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:9px}
+.chat-messages::-webkit-scrollbar{width:3px}
+.chat-messages::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.msg{display:flex;gap:7px;align-items:flex-start;animation:msg-in .3s ease}
+@keyframes msg-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.msg.mine{flex-direction:row-reverse}
+.msg-av{width:24px;height:24px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600;color:white}
+.msg-body{max-width:200px;display:flex;flex-direction:column;gap:2px}
+.msg.mine .msg-body{align-items:flex-end}
+.msg-name{font-size:10px;color:var(--muted);letter-spacing:.04em}
+.msg-bubble{padding:7px 11px;font-size:13px;line-height:1.5;background:var(--surface2);color:var(--ink2);border-radius:4px 14px 14px 14px}
+.msg.mine .msg-bubble{background:var(--ink);color:#f5f0e8;border-radius:14px 4px 14px 14px}
+.msg-time{font-size:9px;color:var(--muted)}
+.msg-story-ref{font-size:11px;font-style:italic;color:var(--muted);margin-top:3px;padding:5px 9px;background:var(--surface);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:background .15s;display:flex;align-items:center;gap:5px}
+.msg-story-ref:hover{background:var(--border)}
+.chat-input-wrap{padding:10px 12px;border-top:1px solid var(--border);flex-shrink:0;display:flex;gap:7px;align-items:flex-end}
+.chat-input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:7px 11px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:300;color:var(--ink);outline:none;resize:none;line-height:1.5;max-height:80px;transition:border-color .18s}
+.chat-input:focus{border-color:var(--accent)}
+.chat-input::placeholder{color:var(--muted)}
+.chat-send{width:30px;height:30px;border-radius:50%;background:var(--ink);border:none;color:#f5f0e8;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;transition:all .18s}
+.chat-send:hover:not(:disabled){background:#2a2520;transform:scale(1.1)}
+.chat-send:disabled{opacity:.3;cursor:not-allowed}
+
+/* OVERLAY */
+.overlay{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(15,13,10,.55);backdrop-filter:blur(20px);animation:ov-in .25s ease}
+@keyframes ov-in{from{opacity:0}to{opacity:1}}
+
+/* STORY MODAL */
+.smodal{width:100%;max-width:700px;max-height:88vh;overflow-y:auto;background:var(--surface);border-radius:22px;border:1px solid var(--border);box-shadow:0 20px 60px rgba(15,13,10,.12);animation:m-up .4s cubic-bezier(.16,1,.3,1)}
+@keyframes m-up{from{opacity:0;transform:translateY(32px) scale(.95)}to{opacity:1;transform:none}}
+.smodal::-webkit-scrollbar{width:4px}
+.smodal::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.smhero{height:210px;border-radius:22px 22px 0 0;position:relative;overflow:hidden;display:flex;align-items:flex-end;padding:24px}
+.smhero-pattern{position:absolute;inset:0;opacity:.08}
+.smhero-ov{position:absolute;inset:0;background:linear-gradient(to top,rgba(250,247,242,1) 0%,rgba(250,247,242,.3) 55%,transparent 100%)}
+.smhero-content{position:relative;z-index:1}
+.sm-chip{font-size:10px;letter-spacing:.12em;text-transform:uppercase;padding:4px 10px;border-radius:20px;display:inline-block;font-weight:500;margin-bottom:8px}
+.sm-title{font-family:'Playfair Display',serif;font-size:clamp(20px,3.5vw,30px);font-weight:400;color:var(--ink);line-height:1.15;margin-bottom:4px}
+.sm-meta{font-size:12px;color:var(--muted);letter-spacing:.04em}
+.sm-close{position:absolute;top:14px;right:14px;width:30px;height:30px;border-radius:50%;background:rgba(250,247,242,.9);border:1px solid var(--border);color:var(--ink2);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;z-index:10;transition:all .2s}
+.sm-close:hover{background:var(--border);color:var(--ink);transform:rotate(90deg)}
+.sm-actions{display:flex;gap:8px;padding:14px 26px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.sm-act-btn{display:flex;align-items:center;gap:5px;padding:6px 13px;border-radius:100px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:500;cursor:pointer;transition:all .18s;border:1px solid var(--border);background:transparent;color:var(--muted)}
+.sm-act-btn:hover{background:var(--surface2);color:var(--ink2)}
+.sm-act-btn.liked{background:#fff8f5;border-color:#f4d0c0;color:var(--accent)}
+.sm-act-btn.liked .h-icon{animation:heartpop .35s ease}
+@keyframes heartpop{0%{transform:scale(1)}40%{transform:scale(1.6)}100%{transform:scale(1)}}
+.smbody{padding:20px 26px 28px}
+.sm-quote{font-family:'Playfair Display',serif;font-style:italic;font-size:17px;line-height:1.65;color:var(--ink2);border-left:1px solid var(--border2);padding:8px 0 8px 18px;margin-bottom:22px;font-weight:300}
+.sm-sec{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:500;margin-bottom:10px}
+.sm-text{font-size:15px;line-height:1.82;font-weight:300;color:var(--ink2);margin-bottom:22px}
+.sm-text p{margin-bottom:1em}
+.tags{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:22px}
+.tag{padding:4px 11px;border-radius:20px;font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;transition:all .18s}
+.tag:hover{transform:translateY(-1px)}
+.sm-sig{font-size:14px;line-height:1.78;color:var(--muted);margin-bottom:22px;font-weight:300}
+.sm-rq{list-style:none;display:flex;flex-direction:column;gap:8px;margin-bottom:22px}
+.sm-rq li{font-size:13px;color:var(--muted);font-style:italic;padding:9px 13px;background:var(--surface2);border-radius:8px;border-left:2px solid var(--border2);transition:border-color .2s}
+.sm-rq li:hover{border-color:var(--accent)}
+.sm-related-row{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
+.sm-related-row::-webkit-scrollbar{display:none}
+.sm-rel-card{flex-shrink:0;width:130px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:all .2s}
+.sm-rel-card:hover{background:var(--border2);transform:translateY(-3px);box-shadow:0 6px 20px rgba(0,0,0,.08)}
+.sm-rel-emoji{font-size:16px;margin-bottom:4px}
+.sm-rel-label{font-family:'Playfair Display',serif;font-style:italic;font-size:11px;color:var(--ink2);line-height:1.3}
+.sm-rel-person{font-size:9px;color:var(--muted);margin-top:3px}
+.sm-chat-btn{width:100%;margin-top:16px;padding:10px;border-radius:100px;background:transparent;border:1px solid var(--border2);color:var(--muted);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all .2s}
+.sm-chat-btn:hover{background:var(--surface2);color:var(--ink);transform:translateY(-1px)}
+
+/* ADD MODAL */
+.amodal{width:100%;max-width:560px;background:var(--surface);border-radius:20px;border:1px solid var(--border);box-shadow:0 40px 100px rgba(15,13,10,.18);animation:m-up .38s cubic-bezier(.16,1,.3,1);overflow:hidden;position:relative}
+.amodal::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#a04e30,#8a6a10,#2d6e48)}
+.ahead{padding:22px 24px 0}
+.a-title{font-family:'Playfair Display',serif;font-size:24px;font-weight:700;color:var(--ink);margin-bottom:3px}
+.a-sub{font-size:12px;color:var(--muted)}
+.abody{padding:16px 24px 24px;display:flex;flex-direction:column;gap:12px}
+.afield{display:flex;flex-direction:column;gap:5px}
+.alabel{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:500}
+.ainput,.atextarea,.aselect{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:300;color:var(--ink);outline:none;transition:border-color .18s,box-shadow .18s;width:100%}
+.ainput::placeholder,.atextarea::placeholder{color:var(--muted)}
+.ainput:focus,.atextarea:focus,.aselect:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(200,98,62,.1)}
+.atextarea{resize:vertical;min-height:110px;line-height:1.7}
+.aselect{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239a9490'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;cursor:pointer}
+.agrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.abtnrow{display:flex;gap:10px;margin-top:4px}
+.abtn{flex:1;padding:11px;border-radius:100px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all .18s;border:1px solid var(--border2);background:transparent;color:var(--muted)}
+.abtn:hover{color:var(--ink);background:var(--surface2)}
+.abtn.go{background:var(--ink);border-color:var(--ink);color:#f5f0e8}
+.abtn.go:hover:not(:disabled){background:#2a2520;transform:translateY(-1px);box-shadow:0 4px 14px rgba(0,0,0,.18)}
+.abtn.go:disabled{opacity:.35;cursor:not-allowed;transform:none}
+
+/* LOADING */
+.lmodal{width:100%;max-width:360px;background:var(--surface);border-radius:20px;border:1px solid var(--border);box-shadow:0 40px 100px rgba(15,13,10,.15);padding:40px 32px;text-align:center;animation:m-up .35s ease}
+.lring{width:44px;height:44px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 20px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.l-title{font-family:'Playfair Display',serif;font-size:21px;font-weight:700;color:var(--ink);margin-bottom:5px}
+.l-sub{font-size:12px;color:var(--muted);line-height:1.6}
+.lsteps{display:flex;flex-direction:column;gap:6px;margin-top:16px;text-align:left}
+.lstep{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:7px;opacity:0;animation:fup .35s ease forwards}
+.lstep.ok{color:#6e9e82}
+.lstep-d{width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0}
+@keyframes fup{to{opacity:1}}
+
+/* SCRAPBOOK */
+.sb-overlay{position:fixed;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(15,13,10,.6);backdrop-filter:blur(24px);animation:ov-in .25s ease}
+.sb-modal{width:100%;max-width:560px;background:var(--surface);border-radius:20px;border:1px solid var(--border);box-shadow:0 32px 80px rgba(15,13,10,.2);animation:m-up .4s cubic-bezier(.16,1,.3,1);overflow:hidden;position:relative}
+.sb-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)}
+.sb-head-left{display:flex;flex-direction:column;gap:2px}
+.sb-title{font-family:'Playfair Display',serif;font-size:16px;font-weight:400;font-style:italic;color:var(--ink)}
+.sb-sub{font-size:10px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.sb-close{width:26px;height:26px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
+.sb-close:hover{background:var(--border);color:var(--ink)}
+.sb-generating{padding:60px 32px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:14px}
+.sb-gen-ring{width:40px;height:40px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite}
+.sb-gen-title{font-family:'Playfair Display',serif;font-size:18px;font-weight:300;font-style:italic;color:var(--ink)}
+.sb-gen-sub{font-size:12px;color:var(--muted);line-height:1.6;max-width:280px}
+.sb-gen-steps{display:flex;flex-direction:column;gap:5px;margin-top:4px;text-align:left;min-width:220px}
+.sb-gen-step{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px;opacity:0;animation:fup .4s ease forwards}
+.sb-gen-step.ok{color:#5aaa78}
+.sb-gen-step-d{width:4px;height:4px;border-radius:50%;background:currentColor;flex-shrink:0}
+/* FLIPBOOK */
+.sb-book{position:relative;overflow:hidden;background:var(--surface2);border-bottom:1px solid var(--border)}
+.sb-pages{display:flex;transition:transform .45s cubic-bezier(.16,1,.3,1)}
+.sb-page{min-width:100%;display:flex;flex-direction:column}
+.sb-scene-art{width:100%;height:260px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.sb-scene-art svg{width:100%;height:100%}
+.sb-scene-art-loading{width:100%;height:260px;display:flex;align-items:center;justify-content:center;background:var(--surface2)}
+.sb-page-caption{padding:14px 18px;background:var(--surface)}
+.sb-page-num-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px}
+.sb-page-num{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.sb-emotion-pill{font-size:9px;letter-spacing:.08em;font-weight:500;padding:2px 8px;border-radius:20px;text-transform:capitalize}
+.sb-page-moment{font-family:'Playfair Display',serif;font-style:italic;font-size:15px;color:var(--ink2);line-height:1.4;margin-bottom:4px;font-weight:400}
+.sb-page-detail{font-size:12px;color:var(--muted);line-height:1.6;font-weight:300}
+/* FLIPBOOK CONTROLS */
+.sb-controls{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-top:1px solid var(--border)}
+.sb-nav-btn{width:32px;height:32px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);color:var(--ink2);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:all .18s}
+.sb-nav-btn:hover:not(:disabled){background:var(--border);color:var(--ink);transform:scale(1.06)}
+.sb-nav-btn:disabled{opacity:.3;cursor:not-allowed}
+.sb-dots{display:flex;gap:6px;align-items:center}
+.sb-dot{width:6px;height:6px;border-radius:50%;background:var(--border2);cursor:pointer;transition:all .2s}
+.sb-dot.on{background:var(--accent);transform:scale(1.2)}
+.sb-auto-btn{font-size:11px;color:var(--muted);background:transparent;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;padding:4px 8px;border-radius:4px;transition:color .15s}
+.sb-auto-btn:hover{color:var(--ink)}
+.sb-auto-btn.playing{color:var(--accent)}
+
+/* TOAST */
+.toast{position:fixed;bottom:36px;left:50%;transform:translateX(-50%);background:var(--ink);color:#f5f0e8;border-radius:100px;padding:10px 18px;font-size:12px;z-index:200;animation:toast-in .35s cubic-bezier(.16,1,.3,1);white-space:nowrap;display:flex;align-items:center;gap:7px;box-shadow:0 8px 32px rgba(0,0,0,.25)}
+.t-pip{width:5px;height:5px;background:#6e9e82;border-radius:50%}
+@keyframes toast-in{from{opacity:0;transform:translateX(-50%) translateY(16px) scale(.9)}to{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}}
+`;
+
+// ── Palette (dark, saturated) ─────────────────────────────────────────────────
+const PALETTES = [
+  {bg:"#d4845a",ring:"rgba(212,132,90,.5)"},    // soft terracotta
+  {bg:"#4a9e8a",ring:"rgba(74,158,138,.45)"},   // soft teal
+  {bg:"#c46898",ring:"rgba(196,104,152,.45)"},  // soft rose
+  {bg:"#c9a030",ring:"rgba(201,160,48,.5)"},    // warm gold
+  {bg:"#5a82c4",ring:"rgba(90,130,196,.45)"},   // soft cobalt
+  {bg:"#a0724a",ring:"rgba(160,114,74,.45)"},   // warm caramel
+  {bg:"#5aaa78",ring:"rgba(90,170,120,.45)"},   // soft sage
+  {bg:"#8a68c4",ring:"rgba(138,104,196,.45)"},  // soft lavender
+];
+
+const TAG_COLORS={food:"#a04e30",migration:"#1e3e7a",family:"#7a2858",memory:"#5a2e10",tradition:"#7a5a0a",resilience:"#1e5244",language:"#1a5e38",celebration:"#7a5a0a",nature:"#1a5e38",mythology:"#7a2858",identity:"#1e3e7a",loss:"#9a9490",childhood:"#a04e30",music:"#1a5e38",history:"#1e5244"};
+const tagStyle=t=>{const c=TAG_COLORS[t]||"#9a9490";return{background:c+"1a",color:c,border:`1px solid ${c}40`};};
+
+// ── Seed stories — spread across viewport ─────────────────────────────────────
+const SEED=[
+  {id:1,label:"Nana's Dumplings",emoji:"🥟",p:0,likes:24,
+   title:"The Fold That Seals the Love",person:"Mei-Ling Zhao",place:"Chengdu → Vancouver",culture:"Sichuan Chinese",
+   type:"Recipe & Ritual",themes:["food","family","memory","tradition"],
+   quote:"She said the fold was the most important part. 'You are sealing in the love,' she told me. 'If you rush, the love escapes.'",
+   story:"My grandmother made dumplings every Sunday of my childhood, and the smell of sesame oil and ginger would pull me from sleep better than any alarm. She learned from her mother in Chengdu, who learned from hers — a chain of hands stretching back through time like linked fingers.\n\nWhen she emigrated to Vancouver in 1974 with two suitcases and a worn recipe card, she brought the recipe as seriously as she brought anything else. In a new country where nobody knew our name or our food, those dumplings became how we recognized ourselves.\n\nI learned by watching. There were no measurements — a palm of flour, enough water until it talks to you, pork and cabbage mixed until it smells right. The knowledge lived in her hands, not on any page. I am still learning to translate it into mine.",
+   significance:"This story captures how food operates as living memory — a technology for transmitting cultural identity across displacement and generation.",
+   reflections:["What food connects you most deeply to your heritage?","What knowledge does someone in your life carry that has never been written down?","How do you preserve a tradition that lives in the body rather than on the page?"],
+   x:4,y:14,size:118},  // top-left
+  {id:2,label:"The Long Walk",emoji:"🚶",p:1,likes:38,
+   title:"Forty Days to the Border, a Lifetime Across It",person:"Yusuf Al-Rashid",place:"Aleppo → Berlin",culture:"Syrian",
+   type:"Migration Story",themes:["migration","resilience","identity","loss"],
+   quote:"I carried nothing but my children and a photograph of our house. The house I thought I could rebuild. The photograph — that I could not replace.",
+   story:"There are things you rehearse for — job interviews, weddings, arguments with your brother. Nobody rehearses leaving.\n\nWe left in the 3am dark of a November night, my wife holding our youngest, me carrying our older daughter on my shoulders. Our neighbors watched from their windows. Nobody waved.\n\nThe journey took 40 days through four countries. We slept in an abandoned factory in Serbia where other families had scratched their names into the walls. I added ours: Al-Rashid, 2015, Syria. Germany was cold and bureaucratic and the most beautiful thing I had ever seen, because it was the end of moving.",
+   significance:"Personal migration testimonies are among the most important historical documents of our era.",
+   reflections:["What would you carry if you had to leave tonight?","How does a person hold two identities at once?","What does 'home' mean when you've had to leave it?"],
+   x:72,y:8,size:128},  // top-right
+  {id:3,label:"The Star Bride",emoji:"✨",p:2,likes:17,
+   title:"When the Sky Came Down to Marry the River",person:"Priya Nair",place:"Kerala, India",culture:"Malayalam",
+   type:"Village Legend",themes:["mythology","nature","tradition","memory"],
+   quote:"The elders say that on certain nights, if you listen to the river, you can still hear her singing — the star bride who chose water over heaven.",
+   story:"In the village where my grandmother was born, children were taught never to turn their backs on the river at night. Not because it was dangerous, they said, but because it was watching.\n\nThe legend of the Star Bride predates memory. A celestial being descended to bathe in the Periyar and fell in love with the way it moved. She chose mortal form. The night sky, missing her, dimmed slightly — which is why, if you compare the Kerala sky to skies elsewhere, there is a softness in it, a small persistent grief.\n\nMy grandmother told this story differently each time, which I now understand was the point. The legend was a vessel. You filled it with whatever a child needed.",
+   significance:"This story represents an ecosystem of oral mythology that encodes ecological relationships, moral teaching, and communal identity in narrative form.",
+   reflections:["What legends shaped how you understood the world as a child?","How do stories change across generations?","What would it mean to preserve a story meant to be told, not written?"],
+   x:82,y:42,size:103},  // right-mid
+  {id:4,label:"Festival of Lights",emoji:"🪔",p:3,likes:31,
+   title:"The Year I Carried the Lantern",person:"Amara Osei",place:"Accra, Ghana",culture:"Akan",
+   type:"Celebration Memory",themes:["celebration","childhood","family","tradition"],
+   quote:"I was eight years old and the lantern was taller than me and I have never felt so important in my entire life.",
+   story:"The Homowo harvest festival happened every year but it only happened like that once — the year I was eight and my uncle chose me, specifically me, to carry the family lantern.\n\nIt was taller than I was. The light made everything golden. The drums were so loud I felt them in my chest. My grandmother pressed her palm to my forehead and said something in Twi my mother later translated as 'you carry more than light.'\n\nI've lived in London for eleven years now. I make palm nut soup on Homowo and call my mother and she calls her mother and the three of us eat at the same time across three time zones. The lantern is gone. The feeling — I still carry it.",
+   significance:"Diaspora communities develop sophisticated practices for maintaining connection to home traditions across geographic distance.",
+   reflections:["What childhood memory carries the most weight for you now?","How do you maintain traditions when separated from the community?","What rituals would you pass to the next generation?"],
+   x:38,y:28,size:113},  // center-upper
+  {id:5,label:"Last Lullaby",emoji:"🎵",p:4,likes:29,
+   title:"The Last Song My Grandmother Sang",person:"Haruko Yamamoto",place:"Hokkaido, Japan",culture:"Ainu",
+   type:"Song & Language",themes:["language","music","memory","loss"],
+   quote:"There are fewer than ten people alive who can sing it correctly. My grandmother was one. She is no longer.",
+   story:"The Ainu language has perhaps 300 living speakers. The number who can sing the traditional upopo — the seat songs — is far fewer. My grandmother was one of the last.\n\nI recorded her six months before she died. I set my phone on the kitchen table between her tea and mine and pressed record with shaking hands. The song is four minutes long. She sang it twice.\n\nListening now, I can hear the refrigerator hum. I can hear her breathe. A car outside. And underneath all of that, this melody older than the building we sat in, older than the nation we lived in. My daughter is three. I play her the recording. I sing along, badly. She corrects me.",
+   significance:"Language death is among the most irreversible forms of cultural loss. Each language carries unique ways of conceptualizing time, relationship, and nature.",
+   reflections:["Is there a song in your family that might not survive another generation?","What languages do people in your family speak that you don't?","How might you document knowledge that exists only in living memory?"],
+   x:62,y:62,size:108},  // right-lower
+  {id:6,label:"Wedding Trunk",emoji:"👗",p:5,likes:22,
+   title:"What She Packed and What She Left Behind",person:"Fatima Al-Hassan",place:"Marrakech → Paris",culture:"Moroccan Berber",
+   type:"Wedding Memory",themes:["family","tradition","identity","memory"],
+   quote:"My mother packed seven dresses and one secret in that trunk. I only learned what the secret was at my own wedding.",
+   story:"In my mother's family, every bride received a cedar trunk. Into it went things that could not be spoken — a grandmother's bracelet, a folded prayer, a packet of seeds from a garden that no longer exists.\n\nI grew up knowing the trunk existed and not knowing what was in it. Some things are for the woman you will become, not the girl you are.\n\nAt my wedding in Paris, my mother opened the trunk. Inside: an embroidered belt from the 1930s, a photograph of a woman I didn't recognize but whose jawline is mine exactly, a piece of paper with seven words in Tamazight that my mother whispered in my ear. I am learning Tamazight now. Slowly.",
+   significance:"Material culture functions as a medium for transmitting cultural memory, particularly the inner lives of women whose experiences were rarely recorded in official history.",
+   reflections:["What objects in your family carry stories never fully told?","What was passed to you at a significant moment?","What would you put in a trunk for someone you loved?"],
+   x:4,y:60,size:108},  // left-lower
+  {id:7,label:"River Father",emoji:"🐟",p:6,likes:19,
+   title:"My Father Knew Every Bend by Name",person:"Carlos Ribeiro",place:"Amazon Basin, Brazil",culture:"Ribeirinho",
+   type:"Craft & Knowledge",themes:["nature","tradition","family","resilience"],
+   quote:"He could tell the weather by the color of the water. He could tell the time by where the birds sat in the trees. The river was his clock, his calendar, his library.",
+   story:"My father could navigate 200 kilometers of the Amazon River by feel. He learned from his father, who learned from his — knowledge accumulated over generations like sediment.\n\nHe knew which fish to take and which to release. He knew where the water went fast and where it held still. He knew where a village had been before the water rose and swallowed it.\n\nWhen the dam was built upstream, it changed everything. He adapted what he could. Some things could not be adapted. I bring my children to the river. I tell them what I know, which is less than what he knew. But we go. Every year.",
+   significance:"Traditional ecological knowledge represents thousands of years of observation and relationship with specific environments — and vanishes when its carriers do.",
+   reflections:["What practical knowledge in your family isn't written anywhere?","How do we preserve knowledge learned through doing?","What has been lost in your landscape in your lifetime?"],
+   x:30,y:72,size:103},  // bottom-center-left
+  {id:8,label:"Unsent Letters",emoji:"✉️",p:7,likes:44,
+   title:"The Letters My Grandfather Wrote and Never Sent",person:"James Takahashi",place:"Manzanar, California",culture:"Japanese-American",
+   type:"Family History",themes:["history","resilience","identity","memory","family"],
+   quote:"He wrote every week to his parents in Japan. He never sent a single letter. After the war, he burned them. But he had told my grandmother what was in them.",
+   story:"My grandfather was 19 when he was sent to Manzanar. He had been born in California. He had never been to Japan. This did not matter.\n\nDuring three years there, he wrote letters to his parents — explaining where he was, what the desert looked like, that he was trying to understand his country. He burned them before he came home. My grandmother said he stood at the edge of the road with a coffee can, and when it was done, said: 'Now we start.'\n\nThey never discussed the camp in public. My grandmother kept their story in her memory like a jewel in a fist. She told my mother everything when my mother was 40. My mother told me everything last year. I am the first person in our family to write it down.",
+   significance:"The Japanese American incarceration is documented history, but the inner lives of those who experienced it remain largely unrecorded.",
+   reflections:["What difficult history in your family has been kept in silence?","When is the right time to speak about painful things?","What family stories are waiting to be written down?"],
+   x:55,y:76,size:122},  // bottom-right
+];
+
+const THEMES_ALL=["migration","family","memory","tradition","resilience","food","language","celebration","nature","mythology","identity","history"];
+const LOAD_MSGS=["Reading your story…","Finding its heartbeat…","Weaving the narrative…","Composing the archive entry…","Adding to the constellation…"];
+const TYPE_OPTS=["Family Memory","Migration Story","Village Legend","Recipe & Ritual","Celebration Memory","Song & Language","Craft & Knowledge","Wedding Memory","Family History","Oral Tradition"];
+const mkTime=m=>{const d=new Date();d.setMinutes(d.getMinutes()-m);return d;};
+const SEED_MSGS=[
+  {id:1,author:"Mei-Ling",color:"#d4845a",text:"Just shared my grandmother's dumpling story. It feels strange and wonderful to have it out in the world.",time:mkTime(48),storyRef:{label:"Nana's Dumplings",id:1}},
+  {id:2,author:"Yusuf",color:"#4a9e8a",text:"Welcome Mei-Ling. Your story made me think of crossing borders with only what fits in your hands.",time:mkTime(45)},
+  {id:3,author:"Priya",color:"#c46898",text:"The image of sealing love into the fold — that stayed with me all morning.",time:mkTime(42)},
+  {id:4,author:"Amara",color:"#c9a030",text:"I've been thinking about how much knowledge lives in hands and not in books. My uncle knows how to read clouds but never taught anyone.",time:mkTime(30)},
+  {id:5,author:"Haruko",color:"#5a82c4",text:"That's exactly why I recorded my grandmother. I was terrified I'd waited too long.",time:mkTime(28)},
+  {id:6,author:"Yusuf",color:"#4a9e8a",text:"You hadn't. The recording exists. That's everything.",time:mkTime(25)},
+  {id:7,author:"Carlos",color:"#5aaa78",text:"Just added my story. My father's relationship with the Amazon was a whole language I don't know enough of.",time:mkTime(12),storyRef:{label:"River Father",id:7}},
+  {id:8,author:"Priya",color:"#c46898",text:"Carlos — your father sounds like someone who could read the world.",time:mkTime(8)},
+  {id:9,author:"Fatima",color:"#a0724a",text:"Reading all of these stories and feeling less alone in the work of remembering.",time:mkTime(3)},
+];
+
+function fmtTime(d){const diff=Math.floor((new Date()-d)/60000);if(diff<1)return"just now";if(diff<60)return`${diff}m ago`;const h=Math.floor(diff/60);if(h<24)return`${h}h ago`;return`${Math.floor(h/24)}d ago`;}
+function initials(n){return n.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();}
+
+// ── Particle canvas (ambient floating dots) ───────────────────────────────────
+function ParticleCanvas() {
+  const canvasRef = useRef(null);
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+    resize();
+    window.addEventListener("resize", resize);
+    const particles = Array.from({length:35}, () => ({
+      x: Math.random()*window.innerWidth, y: Math.random()*window.innerHeight,
+      r: Math.random()*2.5+.5, vx:(Math.random()-.5)*.18, vy:(Math.random()-.5)*.18,
+      o: Math.random()*.3+.05, ot:0, od:Math.random()*Math.PI*2
+    }));
+    let raf;
+    const draw = () => {
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      const t = Date.now()/1000;
+      particles.forEach(p => {
+        p.x+=p.vx; p.y+=p.vy;
+        if(p.x<0)p.x=canvas.width; if(p.x>canvas.width)p.x=0;
+        if(p.y<0)p.y=canvas.height; if(p.y>canvas.height)p.y=0;
+        const alpha = p.o*(0.5+0.5*Math.sin(t*0.8+p.od));
+        ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+        ctx.fillStyle = `rgba(160,100,60,${alpha})`; ctx.fill();
+      });
+      raf = requestAnimationFrame(draw);
+    };
+    draw();
+    return () => { cancelAnimationFrame(raf); window.removeEventListener("resize", resize); };
+  }, []);
+  return <canvas ref={canvasRef} className="particle-canvas" />;
+}
+
+// ── Burst effect ──────────────────────────────────────────────────────────────
+function Burst({ x, y, color, onDone }) {
+  const count = 10;
+  useEffect(() => { const t = setTimeout(onDone, 900); return () => clearTimeout(t); }, []);
+  return (
+    <div className="burst" style={{left:x,top:y}}>
+      {Array.from({length:count}).map((_,i) => {
+        const angle = (i/count)*Math.PI*2;
+        const dist = 40+Math.random()*30;
+        return (
+          <div key={i} className="burst-particle" style={{
+            background:color,
+            '--tx':`${Math.cos(angle)*dist}px`,
+            '--ty':`${Math.sin(angle)*dist}px`,
+            '--dur':`${0.5+Math.random()*.4}s`,
+            animationDelay:`${i*0.02}s`,
+          }}/>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Floating quotes ───────────────────────────────────────────────────────────
+const QUOTE_SNIPPETS = [
+  "sealing in the love…",
+  "the photograph I could not replace",
+  "older than the nation we lived in",
+  "you carry more than light",
+  "the river was watching",
+  "some things are for the woman you will become",
+  "his clock, his calendar, his library",
+  "now we start",
+  "the knowledge lived in her hands",
+  "a jewel in a fist",
+  "the star bride who chose water over heaven",
+  "it was the end of moving",
+  "she sang it twice",
+];
+
+function FloatQuotes({ entries }) {
+  const [quotes, setQuotes] = useState([]);
+  const counterRef = useRef(0);
+
+  useEffect(() => {
+    // seed a few immediately
+    const seedCount = 4;
+    const initial = Array.from({length: seedCount}, (_, i) => ({
+      id: i,
+      text: QUOTE_SNIPPETS[i % QUOTE_SNIPPETS.length],
+      x: 8 + (i / seedCount) * 75 + Math.random() * 8,
+      y: 18 + Math.random() * 55,
+      size: 10 + Math.floor(Math.random() * 3),
+      delay: i * 1.2,
+    }));
+    setQuotes(initial);
+    counterRef.current = seedCount;
+
+    const iv = setInterval(() => {
+      const id = counterRef.current++;
+      const snippet = QUOTE_SNIPPETS[id % QUOTE_SNIPPETS.length];
+      setQuotes(q => {
+        const next = [...q.slice(-6), {
+          id,
+          text: snippet,
+          x: 5 + Math.random() * 78,
+          y: 18 + Math.random() * 58,
+          size: 10 + Math.floor(Math.random() * 3),
+          delay: 0,
+        }];
+        return next;
+      });
+    }, 5000);
+    return () => clearInterval(iv);
+  }, []);
+
+  return (
+    <div className="float-quotes">
+      {quotes.map(q => (
+        <div key={q.id} className="fquote"
+          style={{
+            left: `${q.x}%`,
+            top: `${q.y}%`,
+            fontSize: q.size,
+            '--dur': `${10 + Math.random() * 6}s`,
+            animationDelay: `${q.delay}s`,
+          }}>
+          "{q.text}"
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Connections (animated) ────────────────────────────────────────────────────
+function Connections({ entries, bubbleRefs }) {
+  const [lines, setLines] = useState([]);
+  const phase = useRef(0);
+  useEffect(() => {
+    const update = () => {
+      phase.current += 0.01;
+      const nl = [];
+      for(let i=0;i<entries.length;i++) for(let j=i+1;j<entries.length;j++){
+        const a=entries[i],b=entries[j];
+        if(a.themes.filter(t=>b.themes.includes(t)).length<2) continue;
+        const ra=bubbleRefs.current[a.id],rb=bubbleRefs.current[b.id];
+        if(!ra||!rb) continue;
+        const m=s=>s.style.transform.match(/translate\(([^,]+),([^)]+)\)/);
+        const ma=m(ra),mb=m(rb);
+        if(!ma||!mb) continue;
+        nl.push({
+          ax:+ma[1]+a.size/2, ay:+ma[2]+a.size/2,
+          bx:+mb[1]+b.size/2, by:+mb[2]+b.size/2,
+          key:`${a.id}-${b.id}`,
+          opacity: 0.12 + 0.08*Math.sin(phase.current+a.id)
+        });
+      }
+      setLines(nl);
+    };
+    const iv = setInterval(update, 80);
+    return () => clearInterval(iv);
+  }, [entries]);
+  return (
+    <svg className="conn">
+      <defs>
+        <marker id="dot" markerWidth="3" markerHeight="3" refX="1.5" refY="1.5">
+          <circle cx="1.5" cy="1.5" r="1.5" fill="rgba(140,100,60,.3)"/>
+        </marker>
+      </defs>
+      {lines.map(l => (
+        <line key={l.key} x1={l.ax} y1={l.ay} x2={l.bx} y2={l.by}
+          stroke={`rgba(140,100,60,${l.opacity})`} strokeWidth="1"
+          strokeDasharray="3 9" markerEnd="url(#dot)"/>
+      ))}
+    </svg>
+  );
+}
+
+// ── Bubble ────────────────────────────────────────────────────────────────────
+function Bubble({ entry, onClick, onHover, dimmed, index, chatOpen }) {
+  const el = useRef(null);
+  const state = useRef({
+    x:(entry.x/100)*window.innerWidth,
+    y:(entry.y/100)*window.innerHeight,
+    vx:(Math.random()-.5)*.18, vy:(Math.random()-.5)*.18, ax:0, ay:0
+  });
+  const hovering = useRef(false);
+  const raf = useRef(null);
+  const pal = PALETTES[entry.p%PALETTES.length];
+  const ix = ((entry.x/100)*window.innerWidth) + "px";
+  const iy = ((entry.y/100)*window.innerHeight) + "px";
+
+  useEffect(() => {
+    const s=entry.size;
+    const onMove=e=>{
+      if(hovering.current) return;
+      const p=state.current;
+      const dx=p.x+s/2-e.clientX, dy=p.y+s/2-e.clientY;
+      const dist=Math.sqrt(dx*dx+dy*dy);
+      if(dist<140){const f=(140-dist)/140*.04;p.ax+=(dx/dist)*f;p.ay+=(dy/dist)*f;}
+    };
+    window.addEventListener("mousemove",onMove);
+    const tick=()=>{
+      const p=state.current;
+      if(hovering.current){
+        raf.current=requestAnimationFrame(tick);
+        return;
+      }
+      const vw=window.innerWidth-(chatOpen?320:0), vh=window.innerHeight;
+      p.vx+=p.ax;p.vy+=p.ay;p.ax=0;p.ay=0;
+      p.vx*=.992;p.vy*=.992;
+      const spd=Math.sqrt(p.vx*p.vx+p.vy*p.vy);
+      if(spd>.45){p.vx=p.vx/spd*.45;p.vy=p.vy/spd*.45;}
+      if(spd<.02){p.vx+=(Math.random()-.5)*.02;p.vy+=(Math.random()-.5)*.02;}
+      p.x+=p.vx;p.y+=p.vy;
+      const minY=100;
+      if(p.x<0){p.x=0;p.vx=Math.abs(p.vx);}
+      if(p.x>vw-s){p.x=vw-s;p.vx=-Math.abs(p.vx);}
+      if(p.y<minY){p.y=minY;p.vy=Math.abs(p.vy);}
+      if(p.y>vh-s-28){p.y=vh-s-28;p.vy=-Math.abs(p.vy);}
+      if(el.current) el.current.style.transform=`translate(${p.x}px,${p.y}px)`;
+      raf.current=requestAnimationFrame(tick);
+    };
+    const delay=setTimeout(()=>{raf.current=requestAnimationFrame(tick);},index*100);
+    return()=>{clearTimeout(delay);cancelAnimationFrame(raf.current);window.removeEventListener("mousemove",onMove);};
+  },[entry.size,index,chatOpen]);
+
+  const fs=entry.size>118?13:11;
+  return (
+    <div ref={el} className="bub-wrap"
+      style={{'--ix':ix,'--iy':iy,animationDelay:`${index*0.12}s`,position:"absolute",left:0,top:0}}>
+      <div className="bub"
+        onClick={()=>!dimmed&&onClick(entry)}
+        onMouseEnter={e=>{hovering.current=true;!dimmed&&onHover(entry,e);}}
+        onMouseLeave={()=>{hovering.current=false;onHover(null,null);}}
+        style={{
+          width:entry.size, height:entry.size,
+          background:`radial-gradient(circle at 35% 28%, ${pal.bg}cc, ${pal.bg}aa)`,
+          boxShadow:`0 10px 30px ${pal.bg}48, 0 2px 8px ${pal.bg}30, inset 0 1px 1px rgba(255,255,255,.14)`,
+          opacity:dimmed?.12:1,
+          filter:dimmed?"saturate(0.15) blur(1px)":"none",
+          cursor:dimmed?"default":"pointer",
+          zIndex:dimmed?1:3,
+        }}>
+        <div className="bub-ring" style={{borderColor:pal.ring}}/>
+        <div className="bub-inner">
+          <span className="bub-emoji" style={{fontSize:entry.size>115?22:17}}>{entry.emoji}</span>
+          <span className="bub-label" style={{fontSize:fs,maxWidth:entry.size*.72}}>{entry.label}</span>
+          {entry.size>105&&<span className="bub-person">{entry.person.split(" ").slice(0,2).join(" ")}</span>}
+        </div>
+        {!dimmed&&<div className="bub-likes">❤ {entry.likes}</div>}
+      </div>
+    </div>
+  );
+}
+
+// ── Tooltip ───────────────────────────────────────────────────────────────────
+function Tooltip({ entry, pos }) {
+  if(!entry||!pos) return null;
+  const x=Math.min(pos.x+18, window.innerWidth-248);
+  const y=Math.min(pos.y-16, window.innerHeight-145);
+  return (
+    <div className="tooltip" style={{left:x,top:y}}>
+      <div className="tooltip-type">{entry.type}</div>
+      <div className="tooltip-quote">"{entry.quote.slice(0,85)}{entry.quote.length>85?"…":""}"</div>
+      <div className="tooltip-meta">{entry.person} · {entry.culture}</div>
+      <div className="tooltip-hint">click to read →</div>
+    </div>
+  );
+}
+
+// ── Scrapbook AI (two-pass: scenes then SVGs one-by-one) ─────────────────────
+async function callClaude(prompt, maxTokens = 2000) {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "anthropic-dangerous-direct-browser-access": "true",
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: maxTokens,
+      messages: [{ role: "user", content: prompt }]
+    })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(`API ${res.status}: ${err?.error?.message || "unknown"}`);
+  }
+  const d = await res.json();
+  const text = (d.content || []).map(b => b.text || "").join("");
+  // Strip markdown fences and leading/trailing whitespace
+  return text.replace(/^```(?:json)?\s*/m, "").replace(/\s*```\s*$/m, "").trim();
+}
+
+async function extractScenes(entry) {
+  const raw = await callClaude(`Read this personal story carefully. Extract exactly 5 real emotional moments to illustrate as a scrapbook.
+
+STORY: ${entry.title}
+PERSON: ${entry.person} | CULTURE: ${entry.culture} | PLACE: ${entry.place}
+FULL TEXT:
+${entry.story}
+
+For each moment give very specific visual instructions — WHO is in the scene, WHAT they are doing, WHAT objects are visible, WHERE it happens, WHAT the light feels like.
+
+Return ONLY a valid JSON object with no extra text before or after it:
+{"scenes":[{"sceneTitle":"exact moment name from the story (e.g. Grandmother Folds Dumplings on Sunday Morning)","caption":"one intimate sentence with real names and objects (max 18 words)","emotion":"warmth|joy|grief|wonder|longing|pride|tenderness|resilience|love|nostalgia","visualDescription":"3-4 sentences: describe who is present (relationship, appearance), what they are doing, specific objects in the scene, the setting, the lighting and colors, the emotional atmosphere"}]}`, 1800);
+  // Find JSON object robustly
+  const jsonMatch = raw.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error("No JSON in extractScenes response");
+  const parsed = JSON.parse(jsonMatch[0]);
+  if (!parsed.scenes || !Array.isArray(parsed.scenes)) throw new Error("scenes array missing");
+  return parsed.scenes;
+}
+
+async function generateSceneSVG(scene, storyContext) {
+  const raw = await callClaude(`You are a Ghibli-style SVG illustrator. Create a warm, hand-painted storybook illustration for this specific scene.
+
+SCENE: ${scene.sceneTitle}
+WHAT TO DRAW: ${scene.visualDescription}
+MOOD: ${scene.emotion}
+STORY: ${storyContext}
+
+Create a rich SVG illustration with these rules:
+- viewBox="0 0 400 280" xmlns="http://www.w3.org/2000/svg"
+- Warm Ghibli palette: bg #f5ede0/#e8d8c0, skin #f0c8a0/#e0a870, warm light #f0c878/#e8a840/#d4843a, earth #8a5a30/#c47a40, green #7aaa6a/#5a8a4a, blue #7a9ec8/#4a6a8a, rose #c46898, shadow #3a3028/#2a2018
+- THREE depth layers: (1) background — sky/wall/landscape in pale tones, (2) midground — main figures and action, (3) foreground — key objects with rich colors
+- Human figures: rounded ellipse head ~15px radius, simple torso, arms as curved paths — Ghibli expressive posture
+- Draw specific objects named in the scene (steaming bowl, lantern glow, river, cedar trunk, phone, drums, suitcases, etc.)
+- Use <defs> with a <radialGradient> for warm atmosphere light
+- At least 30 distinct SVG elements — NO sparse placeholders
+- Varied shapes: <path>, <ellipse>, <rect>, <circle>, <polygon>, <line>
+- NO text or labels inside the SVG
+
+Return ONLY the raw SVG element — starting with <svg and ending with </svg>. No explanation, no markdown, nothing else.`, 4000);
+  // Extract SVG robustly
+  const svgMatch = raw.match(/<svg[\s\S]*?<\/svg>/);
+  return svgMatch ? svgMatch[0] : raw.includes("<svg") ? raw : null;
+}
+
+const SB_GEN_STEPS = [
+  "Reading the full story…",
+  "Identifying real people & objects…",
+  "Choosing 5 emotional moments…",
+  "Painting scene 1…",
+  "Painting scene 2…",
+  "Painting scene 3…",
+  "Painting scene 4…",
+  "Painting scene 5…",
+];
+
+const EMOTION_COLORS = {
+  warmth:"#d4845a", joy:"#c9a030", wonder:"#4a9e8a", longing:"#5a82c4",
+  grief:"#8a8aaa", pride:"#5aaa78", tenderness:"#c46898", resilience:"#8a6a3a",
+  gratitude:"#6a9a6a", love:"#c46898", nostalgia:"#a07850"
+};
+
+// ── Scrapbook Component ───────────────────────────────────────────────────────
+function Scrapbook({ entry, onClose }) {
+  const [pages, setPages] = useState([]);
+  const [current, setCurrent] = useState(0);
+  const [genStep, setGenStep] = useState(0);
+  const [done, setDone] = useState(false);
+  const [autoPlay, setAutoPlay] = useState(false);
+  const [genError, setGenError] = useState(null);
+  const autoRef = useRef(null);
+  const pal = PALETTES[entry.p % PALETTES.length];
+  const storyCtx = `${entry.person}, ${entry.culture}, ${entry.place}`;
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        setGenStep(1);
+        const scenes = await extractScenes(entry);
+        if (cancelled) return;
+        setGenStep(3);
+        for (let i = 0; i < scenes.length; i++) {
+          if (cancelled) return;
+          setGenStep(4 + i);
+          const svg = await generateSceneSVG(scenes[i], storyCtx);
+          if (cancelled) return;
+          if (svg) {
+            setPages(p => [...p, { ...scenes[i], svg }]);
+            if (i === 0) setCurrent(0);
+          }
+        }
+        setDone(true);
+        if (!cancelled) setTimeout(() => setAutoPlay(true), 600);
+      } catch (e) {
+        console.error("Scrapbook:", e);
+        setGenError("Couldn't generate the scrapbook. Please try again.");
+        setDone(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [entry.id]);
+
+  useEffect(() => {
+    if (autoPlay && done && pages.length > 0) {
+      autoRef.current = setInterval(() => {
+        setCurrent(c => { if (c >= pages.length - 1) { setAutoPlay(false); return c; } return c + 1; });
+      }, 3500);
+    }
+    return () => clearInterval(autoRef.current);
+  }, [autoPlay, done, pages.length]);
+
+  const goTo = i => { setCurrent(i); setAutoPlay(false); };
+  const page = pages[current];
+  const emoColor = page ? (EMOTION_COLORS[page.emotion?.toLowerCase()] || pal.bg) : pal.bg;
+
+  return (
+    <div className="sb-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="sb-modal">
+
+        <div className="sb-head" style={{ background:`linear-gradient(135deg,${pal.bg}15,transparent)` }}>
+          <div className="sb-head-left">
+            <div className="sb-title">✦ Memory Scrapbook</div>
+            <div className="sb-sub">{entry.person} · {entry.culture}</div>
+          </div>
+          <button className="sb-close" onClick={onClose}>✕</button>
+        </div>
+
+        <div style={{height:2,background:"var(--border)",position:"relative"}}>
+          <div style={{position:"absolute",left:0,top:0,height:"100%",background:pal.bg,
+            width:`${done?100:(pages.length/5)*100}%`,transition:"width .6s ease"}}/>
+        </div>
+
+        {pages.length === 0 ? (
+          <div className="sb-generating">
+            <div className="sb-gen-ring" style={{borderTopColor:pal.bg}}/>
+            <div className="sb-gen-title" style={{fontStyle:"italic"}}>
+              {genStep <= 3 ? `Reading ${entry.person.split(" ")[0]}'s story…` : `Painting scene ${genStep-3} of 5…`}
+            </div>
+            <div className="sb-gen-sub">
+              {genStep <= 2 && "Extracting the real people, objects and places from this story…"}
+              {genStep === 3 && "Found 5 moments. Now painting each one in Ghibli style…"}
+              {genStep >= 4 && "Each illustration is generated individually — this takes ~20 seconds per scene"}
+            </div>
+            <div className="sb-gen-steps">
+              {SB_GEN_STEPS.map((s, i) => (
+                <div key={i} className={`sb-gen-step ${i < genStep ? "ok":""}`} style={{animationDelay:`${i*.2}s`}}>
+                  <div className="sb-gen-step-d"/>
+                  <span style={{opacity: i < genStep ? 1 : 0.2}}>{s}</span>
+                </div>
+              ))}
+            </div>
+            {genError && <div style={{color:"var(--accent)",fontSize:12,marginTop:12,textAlign:"center"}}>{genError}</div>}
+          </div>
+        ) : (
+          <>
+            <div className="sb-book" style={{background:`linear-gradient(180deg,${emoColor}0e,transparent)`}}>
+              <div className="sb-pages" style={{transform:`translateX(-${current*100}%)`}}>
+                {pages.map((pg, i) => (
+                  <div key={i} className="sb-page">
+                    <div className="sb-scene-art" style={{background:`linear-gradient(160deg,${pal.bg}15,#f5ede008)`}}
+                      dangerouslySetInnerHTML={{__html: pg.svg}}/>
+                    <div className="sb-page-caption">
+                      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+                        <span className="sb-page-num">Page {i+1} of {done?pages.length:"…"}</span>
+                        {pg.emotion && (
+                          <span style={{
+                            fontSize:9,letterSpacing:".1em",textTransform:"uppercase",
+                            color:EMOTION_COLORS[pg.emotion.toLowerCase()]||pal.bg,
+                            background:(EMOTION_COLORS[pg.emotion.toLowerCase()]||pal.bg)+"1a",
+                            border:`1px solid ${(EMOTION_COLORS[pg.emotion.toLowerCase()]||pal.bg)}35`,
+                            padding:"2px 8px",borderRadius:100
+                          }}>{pg.emotion}</span>
+                        )}
+                      </div>
+                      <div className="sb-page-moment">{pg.sceneTitle}</div>
+                      <div className="sb-page-detail">{pg.caption}</div>
+                    </div>
+                  </div>
+                ))}
+                {!done && (
+                  <div className="sb-page" style={{minWidth:"100%"}}>
+                    <div className="sb-scene-art" style={{background:"var(--surface2)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:12}}>
+                      <div className="sb-gen-ring" style={{borderTopColor:pal.bg}}/>
+                      <div style={{fontSize:12,color:"var(--muted)",fontStyle:"italic"}}>Painting scene {pages.length+1} of 5…</div>
+                    </div>
+                    <div className="sb-page-caption">
+                      <div className="sb-page-num">Generating…</div>
+                      <div className="sb-page-moment" style={{color:"var(--muted)"}}>Scene {pages.length+1}</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="sb-controls">
+              <button className="sb-nav-btn" onClick={()=>goTo(Math.max(0,current-1))} disabled={current===0}>←</button>
+              <div className="sb-dots">
+                {Array.from({length:Math.max(pages.length + (done?0:1), 1)}).map((_,i)=>(
+                  <div key={i} className={`sb-dot ${i===current?"on":""}`}
+                    onClick={()=>i<pages.length&&goTo(i)}
+                    style={i===current?{background:emoColor}:{opacity:i<pages.length?1:.25}}/>
+                ))}
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                {done && (
+                  <button className={`sb-auto-btn ${autoPlay?"playing":""}`}
+                    onClick={()=>setAutoPlay(a=>!a)} style={autoPlay?{color:emoColor}:{}}>
+                    {autoPlay?"⏸ Pause":"▶ Play"}
+                  </button>
+                )}
+                <button className="sb-nav-btn"
+                  onClick={()=>goTo(Math.min(pages.length-1,current+1))}
+                  disabled={current>=pages.length-1&&done}>→</button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
+
+// ── Story Modal ───────────────────────────────────────────────────────────────
+function StoryModal({ entry, entries, likes, onLike, onClose, onShareInChat, onOpenRelated }) {
+  if(!entry) return null;
+  const pal=PALETTES[entry.p%PALETTES.length];
+  const liked=likes[entry.id];
+  const total=(entry.likes||0)+(liked?1:0);
+  const related=entries.filter(e=>e.id!==entry.id&&e.themes.some(t=>entry.themes.includes(t))).slice(0,4);
+  const [showScrapbook, setShowScrapbook] = useState(false);
+  // SVG pattern for hero
+  const pat=`<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40'><circle cx='20' cy='20' r='1.5' fill='${pal.bg}'/><circle cx='0' cy='0' r='1' fill='${pal.bg}'/><circle cx='40' cy='40' r='1' fill='${pal.bg}'/></svg>`;
+  return (
+    <>
+    {showScrapbook && <Scrapbook entry={entry} onClose={() => setShowScrapbook(false)} />}
+    <div className="overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="smodal">
+        <div className="smhero" style={{background:`linear-gradient(135deg,${pal.bg}28,${pal.bg}12)`}}>
+          <div className="smhero-pattern" style={{backgroundImage:`url("data:image/svg+xml,${encodeURIComponent(pat)}")`,backgroundSize:"40px"}}/>
+          <div className="smhero-ov"/>
+          <button className="sm-close" onClick={onClose}>✕</button>
+          <div className="smhero-content">
+            <span className="sm-chip" style={{background:pal.bg+"14",color:pal.bg,border:`1px solid ${pal.bg}30`}}>{entry.emoji} {entry.type}</span>
+            <h2 className="sm-title">{entry.title}</h2>
+            <div className="sm-meta">{entry.person} · {entry.place} · {entry.culture}</div>
+          </div>
+        </div>
+        <div className="sm-actions">
+          <button className={`sm-act-btn ${liked?"liked":""}`} onClick={()=>onLike(entry.id)}>
+            <span className="h-icon">{liked?"❤️":"🤍"}</span>{total} hearts
+          </button>
+          <button className="sm-act-btn" style={{background:"#f5f0e8",border:"1px solid #e0d8cc",color:"#3a3530",fontWeight:500}} onClick={() => setShowScrapbook(true)}>✦ AI Scrapbook</button>
+          <button className="sm-act-btn" onClick={()=>{onShareInChat(entry);onClose();}}>💬 Community</button>
+          <button className="sm-act-btn" onClick={()=>navigator.clipboard?.writeText(entry.quote)}>📋 Quote</button>
+        </div>
+        <div className="smbody">
+          <blockquote className="sm-quote">"{entry.quote}"</blockquote>
+          <div className="sm-sec">The Story</div>
+          <div className="sm-text">{entry.story.split("\n\n").map((p,i)=><p key={i}>{p}</p>)}</div>
+          <div className="sm-sec">Themes</div>
+          <div className="tags">{entry.themes.map(t=><span key={t} className="tag" style={tagStyle(t)}>{t}</span>)}</div>
+          <div className="sm-sec">Why This Story Matters</div>
+          <p className="sm-sig">{entry.significance}</p>
+          <div className="sm-sec">Reflect</div>
+          <ul className="sm-rq">{entry.reflections.map((q,i)=><li key={i}>{q}</li>)}</ul>
+          {related.length>0&&(<>
+            <div className="sm-sec">Related Stories</div>
+            <div className="sm-related-row">
+              {related.map(r=>(
+                <div key={r.id} className="sm-rel-card" onClick={()=>onOpenRelated(r)}>
+                  <div className="sm-rel-emoji">{r.emoji}</div>
+                  <div className="sm-rel-label">{r.label}</div>
+                  <div className="sm-rel-person">{r.person.split(" ")[0]}</div>
+                </div>
+              ))}
+            </div>
+          </>)}
+        </div>
+      </div>
+    </div>
+    </>
+  );
+}
+
+// ── Add Modal ─────────────────────────────────────────────────────────────────
+function AddModal({ onClose, onSubmit }) {
+  const [f,setF]=useState({name:"",culture:"",place:"",type:"Family Memory",story:""});
+  const s=(k,v)=>setF(p=>({...p,[k]:v}));
+  const ok=f.name.trim()&&f.story.trim().length>40;
+  return (
+    <div className="overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="amodal">
+        <div className="ahead"><h2 className="a-title">Preserve a Story</h2><p className="a-sub">Your words become a living part of this archive.</p></div>
+        <div className="abody">
+          <div className="agrid">
+            <div className="afield"><label className="alabel">Storyteller *</label><input className="ainput" value={f.name} onChange={e=>s("name",e.target.value)} placeholder="e.g. Maria Santos" autoFocus/></div>
+            <div className="afield"><label className="alabel">Story Type</label><select className="aselect" value={f.type} onChange={e=>s("type",e.target.value)}>{TYPE_OPTS.map(t=><option key={t}>{t}</option>)}</select></div>
+            <div className="afield"><label className="alabel">Culture / Heritage</label><input className="ainput" value={f.culture} onChange={e=>s("culture",e.target.value)} placeholder="e.g. Sichuan Chinese"/></div>
+            <div className="afield"><label className="alabel">Place</label><input className="ainput" value={f.place} onChange={e=>s("place",e.target.value)} placeholder="e.g. Lahore → London"/></div>
+          </div>
+          <div className="afield"><label className="alabel">The Story *</label><textarea className="atextarea" value={f.story} onChange={e=>s("story",e.target.value)} placeholder="Write it exactly as you remember it. Raw is beautiful. There is no wrong way to tell a true story..."/></div>
+          <div className="abtnrow">
+            <button className="abtn" onClick={onClose}>Cancel</button>
+            <button className="abtn go" disabled={!ok} onClick={()=>onSubmit(f)}>Preserve this story ✦</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LoadModal({ step }) {
+  return (
+    <div className="overlay"><div className="lmodal">
+      <div className="lring"/>
+      <div className="l-title">The archive is listening…</div>
+      <p className="l-sub">Your story is being woven into the constellation.</p>
+      <div className="lsteps">{LOAD_MSGS.map((m,i)=>(
+        <div key={i} className={`lstep ${i<step?"ok":""}`} style={{animationDelay:`${i*.8}s`}}>
+          <div className="lstep-d"/><span style={{opacity:i<step?1:.25}}>{m}</span>
+        </div>
+      ))}</div>
+    </div></div>
+  );
+}
+
+// ── Chat Panel ────────────────────────────────────────────────────────────────
+const MEMBERS=[
+  {name:"Mei-Ling",color:"#d4845a",online:true},{name:"Yusuf",color:"#4a9e8a",online:true},
+  {name:"Priya",color:"#c46898",online:false},{name:"Amara",color:"#c9a030",online:true},
+  {name:"Haruko",color:"#5a82c4",online:false},{name:"Carlos",color:"#5aaa78",online:true},
+  {name:"Fatima",color:"#a0724a",online:false},{name:"James",color:"#8a68c4",online:false},
+];
+
+function ChatPanel({ open, onClose, msgs, onSend, unlocked, onUnlock, onOpenStory, myName, myColor }) {
+  const [draft,setDraft]=useState("");
+  const bottomRef=useRef(null);
+  useEffect(()=>{if(open)bottomRef.current?.scrollIntoView({behavior:"smooth"});},[msgs,open]);
+  const send=()=>{const t=draft.trim();if(!t)return;onSend(t);setDraft("");};
+  const onKey=e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}};
+  return (
+    <div className={`chat-panel ${open?"open":""}`}>
+      <div className="chat-head">
+        <div className="chat-head-left">
+          <div className="chat-head-title">Community</div>
+          <div className="chat-head-sub">{MEMBERS.filter(m=>m.online).length} online · {msgs.length} messages</div>
+        </div>
+        <button className="chat-close" onClick={onClose}>✕</button>
+      </div>
+      {!unlocked?(
+        <div className="chat-locked">
+          <div className="lock-icon">🔒</div>
+          <div className="lock-title">Community Chat</div>
+          <p className="lock-sub">Preserve a story to join the conversation. The chat unlocks for everyone who has contributed to the archive.</p>
+          <button className="lock-btn" onClick={onUnlock}>Preserve a Story to Join</button>
+        </div>
+      ):(
+        <>
+          <div className="members-bar">
+            {MEMBERS.map(m=><div key={m.name} className="member-av" data-online={m.online||undefined} style={{background:m.color}} title={m.name}>{initials(m.name)}</div>)}
+            <span className="members-more">+{msgs.length} msgs</span>
+          </div>
+          <div className="chat-messages">
+            {msgs.map(msg=>{
+              const mine=msg.author===myName;
+              return (
+                <div key={msg.id} className={`msg ${mine?"mine":""}`}>
+                  {!mine&&<div className="msg-av" style={{background:msg.color}}>{initials(msg.author)}</div>}
+                  <div className="msg-body">
+                    {!mine&&<span className="msg-name">{msg.author}</span>}
+                    <div className="msg-bubble">{msg.text}</div>
+                    {msg.storyRef&&<div className="msg-story-ref" onClick={()=>onOpenStory(msg.storyRef.id)}>📖 {msg.storyRef.label}</div>}
+                    <span className="msg-time">{fmtTime(msg.time)}</span>
+                  </div>
+                  {mine&&<div className="msg-av" style={{background:myColor}}>{initials(myName)}</div>}
+                </div>
+              );
+            })}
+            <div ref={bottomRef}/>
+          </div>
+          <div className="chat-input-wrap">
+            <textarea className="chat-input" rows={1} value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={onKey} placeholder="Share a thought…"/>
+            <button className="chat-send" disabled={!draft.trim()} onClick={send}>↑</button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── AI ────────────────────────────────────────────────────────────────────────
+async function transformStory(form) {
+  const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,messages:[{role:"user",content:`You are the archivist of "Living Archive." Transform this raw submission into a rich archive entry.\nSTORYTELLER: ${form.name}\nHERITAGE: ${form.culture||"Not specified"}\nPLACE: ${form.place||"Not specified"}\nTYPE: ${form.type}\nRAW STORY:\n${form.story}\nRespond ONLY with valid JSON (no markdown):\n{"label":"Short 2-3 word bubble label","emoji":"One relevant emoji","title":"Poetic title (6-10 words)","quote":"Most powerful line (max 28 words)","story":"Rich 3-paragraph literary retelling. Paragraphs separated by \\n\\n.","themes":["theme1","theme2","theme3","theme4"],"significance":"2-3 sentences on cultural importance.","reflections":["Question 1?","Question 2?","Question 3?"]}`}]})});
+  if(!r.ok) throw new Error("API error");
+  const d=await r.json();
+  return JSON.parse((d.content||[]).map(b=>b.text||"").join("").replace(/```json|```/g,"").trim());
+}
+
+// ── App ───────────────────────────────────────────────────────────────────────
+export default function App() {
+  const [entries,setEntries]=useState(SEED);
+  const [selected,setSelected]=useState(null);
+  const [showAdd,setShowAdd]=useState(false);
+  const [loading,setLoading]=useState(false);
+  const [loadStep,setLoadStep]=useState(0);
+  const [filter,setFilter]=useState(null);
+  const [toast,setToast]=useState(null);
+  const [chatOpen,setChatOpen]=useState(false);
+  const [chatUnlocked,setChatUnlocked]=useState(false);
+  const [msgs,setMsgs]=useState(SEED_MSGS);
+  const [myName,setMyName]=useState("");
+  const [myColor,setMyColor]=useState("#3a1e7a");
+  const [newMsgCount,setNewMsgCount]=useState(0);
+  const [likes,setLikes]=useState({});
+  const [search,setSearch]=useState("");
+  const [tooltip,setTooltip]=useState({entry:null,pos:null});
+  const [totalHearts,setTotalHearts]=useState(()=>SEED.reduce((s,e)=>s+e.likes,0));
+  const [heartsBumped,setHeartsBumped]=useState(false);
+  const [bursts,setBursts]=useState([]);
+  const bubbleRefs=useRef({});
+
+  const showToast=msg=>{setToast(msg);setTimeout(()=>setToast(null),3200);};
+
+  // Live heart ticker
+  useEffect(()=>{
+    const iv=setInterval(()=>{if(Math.random()<.25){setTotalHearts(n=>n+1);setHeartsBumped(true);setTimeout(()=>setHeartsBumped(false),350);}},7000);
+    return()=>clearInterval(iv);
+  },[]);
+
+  useEffect(()=>{
+    if(!loading)return;
+    setLoadStep(0);
+    const ts=LOAD_MSGS.map((_,i)=>setTimeout(()=>setLoadStep(i+1),i*950));
+    return()=>ts.forEach(clearTimeout);
+  },[loading]);
+
+  useEffect(()=>{if(!chatOpen&&chatUnlocked)setNewMsgCount(c=>c+1);},[msgs.length]);
+
+  const searchResults=search.trim().length>1?entries.filter(e=>
+    e.label.toLowerCase().includes(search.toLowerCase())||
+    e.person.toLowerCase().includes(search.toLowerCase())||
+    e.culture.toLowerCase().includes(search.toLowerCase())||
+    e.themes.some(t=>t.includes(search.toLowerCase()))
+  ):[];
+
+  const handleSubmit=async form=>{
+    setShowAdd(false);setLoading(true);
+    try{
+      const parsed=await transformStory(form);
+      const idx=entries.length%PALETTES.length;
+      const entry={...parsed,id:Date.now(),p:idx,likes:0,person:form.name,place:form.place||"Unknown",culture:form.culture||"Unknown",type:form.type,x:8+Math.random()*74,y:15+Math.random()*62,size:100+Math.floor(Math.random()*26)};
+      await new Promise(r=>setTimeout(r,500));
+      setEntries(e=>[...e,entry]);
+      setLoading(false);
+      // Burst at center
+      setBursts(b=>[...b,{id:Date.now(),x:window.innerWidth/2,y:window.innerHeight/2,color:PALETTES[idx].bg}]);
+      if(!chatUnlocked){
+        setChatUnlocked(true);
+        const name=form.name.split(" ")[0];
+        setMyName(name);setMyColor(PALETTES[idx].bg);
+        setMsgs(m=>[...m,{id:Date.now(),author:name,color:PALETTES[idx].bg,text:`Just shared "${parsed.label}" — glad to be here.`,time:new Date(),storyRef:{label:parsed.label,id:entry.id}}]);
+        setChatOpen(true);
+      }
+      showToast("Story preserved and added to the archive ✦");
+    }catch(e){console.error(e);setLoading(false);showToast("Something went wrong — please try again");}
+  };
+
+  const handleLike=id=>{
+    const wasLiked=likes[id];
+    setLikes(l=>({...l,[id]:!wasLiked}));
+    setTotalHearts(n=>wasLiked?n-1:n+1);
+    if(!wasLiked) setBursts(b=>[...b,{id:Date.now(),x:window.innerWidth/2,y:window.innerHeight/2,color:"#c8623e"}]);
+  };
+
+  const pickRandom=()=>{
+    const pool=filter?entries.filter(e=>e.themes.includes(filter)):entries;
+    setSelected(pool[Math.floor(Math.random()*pool.length)]);
+  };
+
+  const sendMsg=text=>setMsgs(m=>[...m,{id:Date.now(),author:myName,color:myColor,text,time:new Date()}]);
+  const shareInChat=entry=>{
+    if(!chatUnlocked)return;
+    setMsgs(m=>[...m,{id:Date.now(),author:myName,color:myColor,text:"I wanted to share this story from the archive:",time:new Date(),storyRef:{label:entry.label,id:entry.id}}]);
+    setChatOpen(true);
+  };
+  const openStoryById=id=>{const e=entries.find(e=>e.id===id);if(e)setSelected(e);};
+  const openChat=()=>{setChatOpen(true);setNewMsgCount(0);};
+  const refCallback=useCallback(id=>el=>{if(el)bubbleRefs.current[id]=el;},[]);
+
+  // Ticker content
+  const tickerItems=[...SEED,...SEED].map((e,i)=>(
+    <span key={i} className="ticker-item">
+      {e.emoji} {e.label} <span className="ticker-sep">·</span>
+    </span>
+  ));
+
+  return (
+    <>
+      <style>{CSS}</style>
+      <ParticleCanvas/>
+      <FloatQuotes entries={entries}/>
+
+      <div className={`center-title ${chatOpen?"shifted":""}`}>
+        <h1>Living Archive</h1>
+        <p>Every bubble is a story. Every story, a life.</p>
+        <div><span className="live-tag"><span className="live-pip"/>Live · {entries.length} stories</span></div>
+      </div>
+
+      <div className="canvas">
+        <Connections entries={entries} bubbleRefs={bubbleRefs}/>
+        {entries.map((e,i)=>{
+          const dimmed=(filter!==null&&!e.themes.includes(filter))||(search.trim().length>1&&!searchResults.find(r=>r.id===e.id));
+          return (
+            <div key={e.id} ref={refCallback(e.id)} style={{position:"absolute",left:0,top:0}}>
+              <Bubble entry={e} onClick={setSelected}
+                onHover={(entry,ev)=>setTooltip(entry?{entry,pos:{x:ev.clientX,y:ev.clientY}}:{entry:null,pos:null})}
+                dimmed={dimmed} index={i} chatOpen={chatOpen}/>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Burst effects */}
+      {bursts.map(b=><Burst key={b.id} x={b.x} y={b.y} color={b.color} onDone={()=>setBursts(bs=>bs.filter(bx=>bx.id!==b.id))}/>)}
+
+      <nav className="nav">
+        <div className="nav-left">
+          <div className="nav-pip"/>
+          <span className="nav-count">{entries.length} stories · {totalHearts} hearts</span>
+        </div>
+        <div className="nav-center">
+          <span className="search-icon">🔍</span>
+          <input className="search-box" value={search} onChange={e=>setSearch(e.target.value)}
+            placeholder="Search stories, cultures, themes…" onBlur={()=>setTimeout(()=>setSearch(""),200)}/>
+        </div>
+        <div className="nav-right">
+          {filter&&<button className="btn" onClick={()=>setFilter(null)}>✕ {filter}</button>}
+          <button className="btn" onClick={pickRandom}>🎲 Random</button>
+          <button className="btn primary" onClick={()=>setShowAdd(true)}>+ Preserve</button>
+          <button className="btn chat-toggle" onClick={openChat}>
+            💬 Community
+            {newMsgCount>0&&!chatOpen&&<span className="chat-badge">{newMsgCount>9?"9+":newMsgCount}</span>}
+          </button>
+        </div>
+      </nav>
+
+      <div className="filter">
+        <button className={`fpill ${!filter?"on":""}`} onClick={()=>setFilter(null)}>All</button>
+        {THEMES_ALL.map(t=>(
+          <button key={t} className={`fpill ${filter===t?"on":""}`}
+            onClick={()=>setFilter(filter===t?null:t)}
+            style={filter===t?{background:TAG_COLORS[t]||"#0f0d0a"}:{}}>{t}</button>
+        ))}
+      </div>
+
+      {search.trim().length>1&&(
+        <div className="search-results">
+          {searchResults.length===0?<div className="sr-empty">No stories found for "{search}"</div>
+            :searchResults.map(e=>(
+              <div key={e.id} className="sr-item" onMouseDown={()=>{setSelected(e);setSearch("");}}>
+                <span className="sr-emoji">{e.emoji}</span>
+                <div className="sr-info"><div className="sr-label">{e.label}</div><div className="sr-meta">{e.person} · {e.culture}</div></div>
+              </div>
+            ))}
+        </div>
+      )}
+
+      <div className="stats-bar">
+        <div className="stat-pill">
+          <div className="stat-dot"/>
+          <span className="stat-text">Hearts</span>
+          <span className={`stat-num ${heartsBumped?"bump":""}`}>{totalHearts.toLocaleString()}</span>
+        </div>
+        <div className="stat-pill">
+          <div className="stat-dot" style={{background:"#1e3e7a"}}/>
+          <span className="stat-text">Stories</span>
+          <span className="stat-num">{entries.length}</span>
+        </div>
+        <div className="stat-pill">
+          <div className="stat-dot" style={{background:"#1a5e38"}}/>
+          <span className="stat-text">Online</span>
+          <span className="stat-num">{MEMBERS.filter(m=>m.online).length}</span>
+        </div>
+      </div>
+
+      <div className="hint">
+        <p>Hover to preview · Click to read</p>
+        <p>Move mouse to push bubbles</p>
+      </div>
+
+      <Tooltip entry={tooltip.entry} pos={tooltip.pos}/>
+
+      {/* Scroll ticker */}
+      <div className="ticker" style={{background:"rgba(245,240,232,.92)",backdropFilter:"blur(12px)"}}>
+        <div className="ticker-inner">{tickerItems}{tickerItems}</div>
+      </div>
+
+      <ChatPanel open={chatOpen} onClose={()=>setChatOpen(false)}
+        msgs={msgs} onSend={sendMsg} unlocked={chatUnlocked}
+        onUnlock={()=>{setShowAdd(true);setChatOpen(false);}}
+        onOpenStory={openStoryById} myName={myName} myColor={myColor}/>
+
+      {selected&&<StoryModal entry={selected} entries={entries} likes={likes}
+        onLike={handleLike} onClose={()=>setSelected(null)}
+        onShareInChat={shareInChat} onOpenRelated={e=>setSelected(e)}/>}
+      {showAdd&&<AddModal onClose={()=>setShowAdd(false)} onSubmit={handleSubmit}/>}
+      {loading&&<LoadModal step={loadStep}/>}
+      {toast&&<div className="toast"><div className="t-pip"/>{toast}</div>}
+    </>
+  );
+}
