@@ -23,6 +23,10 @@ npm run dev
 
 Then open [http://localhost:5173](http://localhost:5173)
 
+## 📋 Claude usage
+
+The document that shows all our Claude usage (prompts, workflows, and how the model is used in this project) is here: [Living Archive — Claude usage](https://docs.google.com/document/d/1qVHOCtQm3tpLsRzrLT_Bgo35FcRnaPRX55wLUXHw5vY/edit?usp=sharing)
+
 ## 🔑 API Key
 
 This app uses the Anthropic API directly from the browser. It requires an API key to be handled by your environment or proxy. The `anthropic-dangerous-direct-browser-access: true` header is set for direct browser usage.
